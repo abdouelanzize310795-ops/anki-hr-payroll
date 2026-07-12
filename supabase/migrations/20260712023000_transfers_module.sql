@@ -1,0 +1,3 @@
+-- transfers module (applied remotely as transfers_module)
+-- Tables: transfer_batches, transfer_lines
+-- RPCs: generate_transfer_batch, mark_transfer_batch_exported

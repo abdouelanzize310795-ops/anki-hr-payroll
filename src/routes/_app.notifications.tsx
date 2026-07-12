@@ -1,53 +1,174 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app/AppShell";
-import { SectionCard } from "@/components/app/primitives";
+import { EmptyPlaceholder, SectionCard } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
-import { Bell, CheckCheck, Wallet, UserPlus, FileSignature, CalendarDays } from "lucide-react";
+import {
+  Bell, CheckCheck, Wallet, FileSignature, CalendarDays, Flag, Building2,
+} from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { listCompanies } from "@/modules/companies/company.functions";
+import {
+  listNotifications,
+  type AppNotification,
+} from "@/modules/notifications/notification.functions";
+import type { CompanyWithMeta } from "@/modules/companies/types";
+import { isPlatformAdmin } from "@/lib/auth/auth.functions";
 
-export const Route = createFileRoute("/_app/notifications")({ component: NotificationsPage });
+export const Route = createFileRoute("/_app/notifications")({
+  component: NotificationsPage,
+});
 
-const groups = [
-  { day: "Today", items: [
-    { icon: Wallet, t: "July payroll ready for approval", d: "Nigeria • 128 employees • $68.4K", when: "2h ago", unread: true, tint: "bg-primary-soft text-primary" },
-    { icon: CalendarDays, t: "Fatou Ndiaye requested leave", d: "Aug 12 → Aug 16 (5 days)", when: "3h ago", unread: true, tint: "bg-gold/15 text-gold-foreground" },
-    { icon: UserPlus, t: "3 new candidates applied", d: "Senior Product Designer role", when: "5h ago", unread: false, tint: "bg-success/10 text-success" },
-  ]},
-  { day: "Yesterday", items: [
-    { icon: FileSignature, t: "Kwame Mensah signed his contract", d: "Employment agreement — Nigeria", when: "1d ago", unread: false, tint: "bg-primary-soft text-primary" },
-  ]},
-];
+const appRouteApi = getRouteApi("/_app");
+
+const kindIcon = {
+  payroll: Wallet,
+  leave: CalendarDays,
+  contract: FileSignature,
+  attendance: Bell,
+  task: Flag,
+} as const;
+
+const kindTint = {
+  payroll: "bg-primary-soft text-primary",
+  leave: "bg-gold/15 text-gold-foreground",
+  contract: "bg-primary-soft text-primary",
+  attendance: "bg-success/10 text-success",
+  task: "bg-destructive/10 text-destructive",
+} as const;
 
 function NotificationsPage() {
+  const { auth } = appRouteApi.useRouteContext();
+  const admin = isPlatformAdmin(auth);
+  const profileCompanyId = auth.profile?.company_id ?? null;
+
+  const [companies, setCompanies] = useState<CompanyWithMeta[]>([]);
+  const [companyFilter, setCompanyFilter] = useState(profileCompanyId ?? "all");
+  const [items, setItems] = useState<AppNotification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
+
+  const lockedCompanyId = admin ? null : profileCompanyId;
+  const effectiveCompanyId =
+    lockedCompanyId ?? (companyFilter === "all" ? undefined : companyFilter);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("ap_notif_read");
+      if (raw) setReadIds(new Set(JSON.parse(raw) as string[]));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setItems(await listNotifications({ data: { companyId: effectiveCompanyId } }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Chargement impossible");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void (async () => {
+      if (admin) setCompanies(await listCompanies());
+    })();
+  }, [admin]);
+
+  useEffect(() => {
+    void load();
+  }, [companyFilter, lockedCompanyId]);
+
+  const markAllRead = () => {
+    const next = new Set(items.map((i) => i.id));
+    setReadIds(next);
+    localStorage.setItem("ap_notif_read", JSON.stringify([...next]));
+  };
+
+  const visible = items.map((i) => ({
+    ...i,
+    unread: i.unread && !readIds.has(i.id),
+  }));
+
   return (
     <>
-      <PageHeader badge="Inbox" title="Notifications"
-        description="Everything that needs your attention, in one place."
-        actions={<Button variant="outline" size="sm"><CheckCheck className="mr-1.5 h-4 w-4" />Mark all read</Button>}
+      <PageHeader
+        badge="Boîte"
+        title="Notifications"
+        description="Paie, congés, contrats et tâches prioritaires."
+        actions={
+          <Button variant="outline" size="sm" onClick={markAllRead}>
+            <CheckCheck className="mr-1.5 h-4 w-4" />
+            Tout marquer lu
+          </Button>
+        }
       />
-      <div className="space-y-6">
-        {groups.map((g) => (
-          <div key={g.day}>
-            <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{g.day}</div>
-            <SectionCard title="">
-              <div className="divide-y divide-border">
-                {g.items.map((n, i) => (
-                  <div key={i} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                    <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${n.tint}`}><n.icon className="h-4 w-4" /></div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm font-medium">{n.t}</div>
-                        {n.unread && <span className="h-1.5 w-1.5 rounded-full bg-gold" />}
-                      </div>
-                      <div className="text-xs text-muted-foreground">{n.d}</div>
-                    </div>
-                    <div className="text-xs text-muted-foreground">{n.when}</div>
+
+      {admin && (
+        <div className="mb-4">
+          <Select value={companyFilter} onValueChange={setCompanyFilter}>
+            <SelectTrigger className="w-full sm:w-56">
+              <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les entreprises</SelectItem>
+              {companies.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.legal_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {error && (
+        <p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Chargement…</p>
+      ) : visible.length === 0 ? (
+        <EmptyPlaceholder
+          title="Aucune notification"
+          description="Les demandes de congé, cycles de paie à approuver et contrats apparaissent ici."
+          icon={Bell}
+        />
+      ) : (
+        <SectionCard title="À traiter" description={`${visible.filter((v) => v.unread).length} non lu(s)`}>
+          <div className="divide-y divide-border">
+            {visible.map((n) => {
+              const Icon = kindIcon[n.kind];
+              return (
+                <div key={n.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                  <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${kindTint[n.kind]}`}>
+                    <Icon className="h-4 w-4" />
                   </div>
-                ))}
-              </div>
-            </SectionCard>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="text-sm font-medium">{n.title}</div>
+                      {n.unread && <span className="h-1.5 w-1.5 rounded-full bg-gold" />}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{n.description}</div>
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">{n.when}</div>
+                  </div>
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={n.href}>Ouvrir</a>
+                  </Button>
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        </SectionCard>
+      )}
     </>
   );
 }

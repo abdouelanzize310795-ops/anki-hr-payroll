@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app/AppShell";
 import { SectionCard, StatusPill, StatCard } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
@@ -7,74 +8,196 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Building2, Plus, Search, Users, Globe2, TrendingUp } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Building2, Plus, Search, MapPin, Layers3 } from "lucide-react";
+import { getRouteApi } from "@tanstack/react-router";
+import { listCompanies, createCompany } from "@/modules/companies/company.functions";
+import { CompanyForm } from "@/modules/companies/components/CompanyForm";
+import type { CompanyWithMeta } from "@/modules/companies/types";
+import type { CreateCompanyInput } from "@/modules/companies/schemas";
 
 export const Route = createFileRoute("/_app/companies")({
   component: CompaniesPage,
 });
 
-const companies = [
-  { name: "Baobab Financial Group", country: "Côte d'Ivoire", employees: 128, plan: "Enterprise", status: "Active", growth: "+12%" },
-  { name: "Sahara Logistics", country: "Morocco", employees: 64, plan: "Pro", status: "Active", growth: "+4%" },
-  { name: "Kilimanjaro Tech", country: "Kenya", employees: 42, plan: "Pro", status: "Active", growth: "+18%" },
-  { name: "Zambezi Health", country: "Zambia", employees: 14, plan: "Starter", status: "Pending", growth: "—" },
-];
+const appRouteApi = getRouteApi("/_app");
+
+function companyInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 function CompaniesPage() {
+  const { auth } = appRouteApi.useRouteContext();
+  const canCreateMore =
+    auth.profile?.role === "platform_admin" || !auth.profile?.company_id;
+
+  const [companies, setCompanies] = useState<CompanyWithMeta[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await listCompanies();
+      setCompanies(rows);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de charger les entreprises");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return companies;
+    return companies.filter((c) =>
+      [c.legal_name, c.trade_name, c.city, c.country?.name_fr, c.sector]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(q)),
+    );
+  }, [companies, query]);
+
+  const handleCreate = async (values: CreateCompanyInput) => {
+    const result = await createCompany({ data: values });
+    if (!result.ok) throw new Error(result.message);
+    setOpen(false);
+    await load();
+  };
+
+  const branchesTotal = companies.reduce((s, c) => s + (c.branches_count ?? 0), 0);
+  const countriesCount = new Set(companies.map((c) => c.country_code)).size;
+
   return (
     <>
       <PageHeader
-        badge="Multi-company"
-        title="Companies"
-        description="Manage the entities under your ANKIBAPAY workspace."
-        actions={<Button size="sm"><Plus className="mr-1.5 h-4 w-4" />Add company</Button>}
+        badge="Entreprises"
+        title="Entreprises"
+        description="Espaces multi-tenant : raisons sociales, établissements et paramétrage local."
+        actions={
+          canCreateMore ? (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm"><Plus className="mr-1.5 h-4 w-4" />Ajouter une entreprise</Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="font-display">Nouvelle entreprise</DialogTitle>
+                </DialogHeader>
+                <CompanyForm submitLabel="Créer l’entreprise" onSubmit={handleCreate} />
+              </DialogContent>
+            </Dialog>
+          ) : null
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Companies" value="4" icon={Building2} accent="primary" />
-        <StatCard label="Total employees" value="248" icon={Users} accent="gold" />
-        <StatCard label="Countries" value="4" icon={Globe2} accent="success" />
+        <StatCard label="Entreprises" value={String(companies.length)} icon={Building2} accent="primary" />
+        <StatCard label="Établissements" value={String(branchesTotal)} icon={Layers3} accent="gold" />
+        <StatCard label="Pays" value={String(countriesCount)} icon={MapPin} accent="success" />
       </div>
 
       <div className="mt-6">
         <SectionCard
-          title="All companies"
+          title="Toutes les entreprises"
+          description={loading ? "Chargement…" : `${filtered.length} résultat(s)`}
           action={
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search…" className="pl-8 h-9 w-56" />
+              <Input
+                placeholder="Rechercher…"
+                className="h-9 w-56 pl-8"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
             </div>
           }
         >
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Company</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead>Employees</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Growth</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {companies.map((c) => (
-                <TableRow key={c.name} className="cursor-pointer">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9"><AvatarFallback className="bg-primary text-primary-foreground text-xs">{c.name.split(" ").map(w => w[0]).slice(0,2).join("")}</AvatarFallback></Avatar>
-                      <div className="font-medium">{c.name}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{c.country}</TableCell>
-                  <TableCell>{c.employees}</TableCell>
-                  <TableCell><span className="rounded-md bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary">{c.plan}</span></TableCell>
-                  <TableCell className="text-success font-medium">{c.growth}</TableCell>
-                  <TableCell><StatusPill status={c.status} /></TableCell>
+          {error && (
+            <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          {!loading && filtered.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-muted/30 p-10 text-center">
+              <Building2 className="mx-auto h-8 w-8 text-primary" />
+              <p className="mt-3 font-display text-lg font-semibold">Aucune entreprise</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Créez votre première entreprise pour activer la paie et les contrats.
+              </p>
+              {canCreateMore && (
+                <Button className="mt-4" size="sm" onClick={() => setOpen(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" />Créer une entreprise
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Entreprise</TableHead>
+                  <TableHead>Pays</TableHead>
+                  <TableHead>Devise</TableHead>
+                  <TableHead>Établissements</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-primary text-xs text-primary-foreground">
+                            {companyInitials(c.legal_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">{c.legal_name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {[c.city, c.region].filter(Boolean).join(" · ") || "—"}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {c.country?.name_fr ?? c.country_code}
+                    </TableCell>
+                    <TableCell>
+                      <span className="amount text-sm">{c.currency_code}</span>
+                    </TableCell>
+                    <TableCell>{c.branches_count ?? 0}</TableCell>
+                    <TableCell>
+                      <StatusPill status={c.is_active ? "Actif" : "En attente"} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to="/companies/$companyId" params={{ companyId: c.id }}>
+                          Ouvrir
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </SectionCard>
       </div>
     </>

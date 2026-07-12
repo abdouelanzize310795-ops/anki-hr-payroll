@@ -1,97 +1,299 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { getRouteApi } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/AppShell";
-import { SectionCard, StatCard, StatusPill } from "@/components/app/primitives";
+import { SectionCard, StatCard, StatusPill, Money } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Plus, Search, Filter, Download, UserCheck, UserX, UserCog } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, UserCog, Building2 } from "lucide-react";
+import { listCompanies } from "@/modules/companies/company.functions";
+import {
+  createEmployee, employeeStats, listEmployees,
+} from "@/modules/employees/employee.functions";
+import { EmployeeForm } from "@/modules/employees/components/EmployeeForm";
+import {
+  employeeStatusLabel,
+  type EmployeeStatus,
+  type EmployeeWithRelations,
+} from "@/modules/employees/types";
+import type { CreateEmployeeInput } from "@/modules/employees/schemas";
+import type { CompanyWithMeta } from "@/modules/companies/types";
+import { isPlatformAdmin } from "@/lib/auth/auth.functions";
 
-export const Route = createFileRoute("/_app/employees")({ component: EmployeesPage });
+export const Route = createFileRoute("/_app/employees")({
+  component: EmployeesPage,
+});
 
-const employees = [
-  { name: "Aisha Bello", role: "Product Manager", dept: "Product", country: "Nigeria", salary: "$4,200", status: "Active" },
-  { name: "Kwame Mensah", role: "Senior Developer", dept: "Engineering", country: "Ghana", salary: "$5,800", status: "Active" },
-  { name: "Fatou Ndiaye", role: "HR Specialist", dept: "People", country: "Senegal", salary: "$3,100", status: "On Leave" },
-  { name: "Thabo Nkosi", role: "Sales Lead", dept: "Sales", country: "South Africa", salary: "$4,600", status: "Active" },
-  { name: "Zanele Khumalo", role: "HR Business Partner", dept: "People", country: "South Africa", salary: "$3,900", status: "Active" },
-  { name: "Jean-Luc Diop", role: "DevOps Engineer", dept: "Engineering", country: "Senegal", salary: "$5,200", status: "Pending" },
-  { name: "Nia Wanjiru", role: "Payroll Analyst", dept: "Finance", country: "Kenya", salary: "$3,400", status: "Active" },
-  { name: "Omar Farah", role: "Data Scientist", dept: "Engineering", country: "Egypt", salary: "$5,000", status: "Active" },
-];
+const appRouteApi = getRouteApi("/_app");
+
+function statusPill(status: EmployeeStatus) {
+  const map: Record<EmployeeStatus, string> = {
+    active: "Actif",
+    onboarding: "Pending",
+    on_leave: "En congé",
+    suspended: "En attente",
+    terminated: "Expiré",
+  };
+  return map[status];
+}
 
 function EmployeesPage() {
+  const { auth } = appRouteApi.useRouteContext();
+  const profileCompanyId = auth.profile?.company_id ?? null;
+  const admin = isPlatformAdmin(auth);
+
+  const [companies, setCompanies] = useState<CompanyWithMeta[]>([]);
+  const [companyFilter, setCompanyFilter] = useState<string>(profileCompanyId ?? "all");
+  const [employees, setEmployees] = useState<EmployeeWithRelations[]>([]);
+  const [stats, setStats] = useState({ total: 0, active: 0, onLeave: 0, onboarding: 0 });
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | EmployeeStatus>("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  const effectiveCompanyId =
+    companyFilter === "all" ? undefined : companyFilter;
+
+  const lockedCompanyId = admin ? null : profileCompanyId;
+
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const companyId = lockedCompanyId ?? effectiveCompanyId;
+      const [rows, s] = await Promise.all([
+        listEmployees({
+          data: {
+            companyId,
+            status: statusFilter,
+            search: search.trim() || undefined,
+          },
+        }),
+        employeeStats({ data: { companyId } }),
+      ]);
+      setEmployees(rows);
+      setStats(s);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Impossible de charger les employés");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void (async () => {
+      if (admin) {
+        const rows = await listCompanies();
+        setCompanies(rows);
+      }
+    })();
+  }, [admin]);
+
+  useEffect(() => {
+    void load();
+  }, [companyFilter, statusFilter, lockedCompanyId]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return employees;
+    return employees.filter((e) =>
+      [e.first_name, e.last_name, e.email, e.job_title, e.employee_number, e.department_name]
+        .filter(Boolean)
+        .some((v) => String(v).toLowerCase().includes(q)),
+    );
+  }, [employees, search]);
+
+  const canCreate = Boolean(lockedCompanyId || admin);
+
+  const handleCreate = async (values: CreateEmployeeInput) => {
+    if (!admin && profileCompanyId) {
+      values.companyId = profileCompanyId;
+    }
+    const result = await createEmployee({ data: values });
+    if (!result.ok) throw new Error(result.message);
+    setOpen(false);
+    await load();
+  };
+
+  if (!canCreate && !loading && companies.length === 0 && !profileCompanyId) {
+    return (
+      <>
+        <PageHeader badge="Employés" title="Employés" description="Gérez l’effectif de votre entreprise." />
+        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-10 text-center">
+          <Building2 className="mx-auto h-8 w-8 text-primary" />
+          <p className="mt-3 font-display text-lg font-semibold">Aucune entreprise associée</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Créez ou rattachez une entreprise avant d’ajouter des employés.
+          </p>
+          <Button className="mt-4" size="sm" asChild>
+            <Link to="/companies">Aller aux entreprises</Link>
+          </Button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <PageHeader
-        badge="People"
-        title="Employees"
-        description="248 people across 4 countries."
+        badge="Employés"
+        title="Employés"
+        description="Fiches administratives, postes et salaires de base (KMF)."
         actions={
-          <>
-            <Button variant="outline" size="sm"><Download className="mr-1.5 h-4 w-4" />Export</Button>
-            <Button size="sm"><Plus className="mr-1.5 h-4 w-4" />Add employee</Button>
-          </>
+          canCreate ? (
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm"><Plus className="mr-1.5 h-4 w-4" />Ajouter un employé</Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="font-display">Nouvel employé</DialogTitle>
+                </DialogHeader>
+                <EmployeeForm
+                  lockedCompanyId={lockedCompanyId}
+                  submitLabel="Créer l’employé"
+                  onSubmit={handleCreate}
+                />
+              </DialogContent>
+            </Dialog>
+          ) : null
         }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Active" value="234" icon={UserCheck} accent="success" />
-        <StatCard label="On leave" value="8" icon={UserX} accent="gold" />
-        <StatCard label="Onboarding" value="6" icon={UserCog} accent="primary" />
-        <StatCard label="Total" value="248" icon={Users} accent="primary" />
+        <StatCard label="Total" value={String(stats.total)} icon={Users} accent="primary" />
+        <StatCard label="Actifs" value={String(stats.active)} icon={UserCheck} accent="success" />
+        <StatCard label="En congé" value={String(stats.onLeave)} icon={UserX} accent="gold" />
+        <StatCard label="Onboarding" value={String(stats.onboarding)} icon={UserCog} accent="primary" />
       </div>
 
       <div className="mt-6">
         <SectionCard
-          title="Directory"
+          title="Annuaire"
+          description={loading ? "Chargement…" : `${filtered.length} employé(s)`}
           action={
-            <div className="flex items-center gap-2">
-              <div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input placeholder="Search people…" className="pl-8 h-9 w-56" /></div>
-              <Button variant="outline" size="sm"><Filter className="mr-1.5 h-4 w-4" />Filter</Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {admin && (
+                <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                  <SelectTrigger className="h-9 w-48">
+                    <SelectValue placeholder="Entreprise" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes</SelectItem>
+                    {companies.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.legal_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}
+              >
+                <SelectTrigger className="h-9 w-40">
+                  <SelectValue placeholder="Statut" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tous statuts</SelectItem>
+                  <SelectItem value="active">Actif</SelectItem>
+                  <SelectItem value="onboarding">Onboarding</SelectItem>
+                  <SelectItem value="on_leave">En congé</SelectItem>
+                  <SelectItem value="suspended">Suspendu</SelectItem>
+                  <SelectItem value="terminated">Sorti</SelectItem>
+                </SelectContent>
+              </Select>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher…"
+                  className="h-9 w-56 pl-8"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
             </div>
           }
         >
-          <Tabs defaultValue="all" className="mb-4">
-            <TabsList>
-              <TabsTrigger value="all">All 248</TabsTrigger>
-              <TabsTrigger value="eng">Engineering</TabsTrigger>
-              <TabsTrigger value="sales">Sales</TabsTrigger>
-              <TabsTrigger value="people">People</TabsTrigger>
-              <TabsTrigger value="finance">Finance</TabsTrigger>
-            </TabsList>
-          </Tabs>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Employee</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Country</TableHead>
-                <TableHead>Salary</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {employees.map((e) => (
-                <TableRow key={e.name}>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9"><AvatarFallback className="bg-primary-soft text-primary text-xs">{e.name.split(" ").map(n => n[0]).join("")}</AvatarFallback></Avatar>
-                      <div>
-                        <div className="font-medium">{e.name}</div>
-                        <div className="text-xs text-muted-foreground">{e.role}</div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{e.dept}</TableCell>
-                  <TableCell className="text-muted-foreground">{e.country}</TableCell>
-                  <TableCell className="font-medium">{e.salary}</TableCell>
-                  <TableCell><StatusPill status={e.status} /></TableCell>
+          {error && (
+            <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
+          {!loading && filtered.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-muted/30 p-10 text-center">
+              <Users className="mx-auto h-8 w-8 text-primary" />
+              <p className="mt-3 font-display text-lg font-semibold">Aucun employé</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Ajoutez votre premier collaborateur pour démarrer la paie.
+              </p>
+              {canCreate && (
+                <Button className="mt-4" size="sm" onClick={() => setOpen(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" />Ajouter un employé
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employé</TableHead>
+                  <TableHead>Poste</TableHead>
+                  <TableHead>Département</TableHead>
+                  <TableHead>Salaire</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-primary-soft text-xs font-semibold text-primary">
+                            {`${e.first_name[0] ?? ""}${e.last_name[0] ?? ""}`.toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="font-medium">{e.first_name} {e.last_name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {e.employee_number ?? "—"}
+                            {admin && e.company_name ? ` · ${e.company_name}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{e.job_title ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">{e.department_name ?? "—"}</TableCell>
+                    <TableCell>
+                      <Money value={e.base_salary} currency={e.currency_code} className="text-sm" />
+                    </TableCell>
+                    <TableCell>
+                      <StatusPill status={statusPill(e.status)} />
+                      <span className="sr-only">{employeeStatusLabel[e.status]}</span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to="/employees/$employeeId" params={{ employeeId: e.id }}>
+                          Ouvrir
+                        </Link>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </SectionCard>
       </div>
     </>

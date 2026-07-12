@@ -1,0 +1,4 @@
+-- contracts module (applied remotely as contracts_module on uokizxiwarlpwzqpkwbf)
+-- Types: contract_type, contract_status
+-- Tables: contracts
+-- RPCs: set_contract_number, transition_contract
