@@ -11,6 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppRecruitmentRouteImport } from './routes/_app.recruitment'
+import { Route as AppPayrollRouteImport } from './routes/_app.payroll'
+import { Route as AppLeaveRouteImport } from './routes/_app.leave'
+import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
+import { Route as AppContractsRouteImport } from './routes/_app.contracts'
+import { Route as AppCompaniesRouteImport } from './routes/_app.companies'
+import { Route as AppAttendanceRouteImport } from './routes/_app.attendance'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -21,24 +28,106 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppRecruitmentRoute = AppRecruitmentRouteImport.update({
+  id: '/recruitment',
+  path: '/recruitment',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPayrollRoute = AppPayrollRouteImport.update({
+  id: '/payroll',
+  path: '/payroll',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppLeaveRoute = AppLeaveRouteImport.update({
+  id: '/leave',
+  path: '/leave',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEmployeesRoute = AppEmployeesRouteImport.update({
+  id: '/employees',
+  path: '/employees',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppContractsRoute = AppContractsRouteImport.update({
+  id: '/contracts',
+  path: '/contracts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCompaniesRoute = AppCompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAttendanceRoute = AppAttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/attendance': typeof AppAttendanceRoute
+  '/companies': typeof AppCompaniesRoute
+  '/contracts': typeof AppContractsRoute
+  '/employees': typeof AppEmployeesRoute
+  '/leave': typeof AppLeaveRoute
+  '/payroll': typeof AppPayrollRoute
+  '/recruitment': typeof AppRecruitmentRoute
 }
 export interface FileRoutesByTo {
+  '/attendance': typeof AppAttendanceRoute
+  '/companies': typeof AppCompaniesRoute
+  '/contracts': typeof AppContractsRoute
+  '/employees': typeof AppEmployeesRoute
+  '/leave': typeof AppLeaveRoute
+  '/payroll': typeof AppPayrollRoute
+  '/recruitment': typeof AppRecruitmentRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/_app/attendance': typeof AppAttendanceRoute
+  '/_app/companies': typeof AppCompaniesRoute
+  '/_app/contracts': typeof AppContractsRoute
+  '/_app/employees': typeof AppEmployeesRoute
+  '/_app/leave': typeof AppLeaveRoute
+  '/_app/payroll': typeof AppPayrollRoute
+  '/_app/recruitment': typeof AppRecruitmentRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/attendance'
+    | '/companies'
+    | '/contracts'
+    | '/employees'
+    | '/leave'
+    | '/payroll'
+    | '/recruitment'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/_app' | '/_app/'
+  to:
+    | '/attendance'
+    | '/companies'
+    | '/contracts'
+    | '/employees'
+    | '/leave'
+    | '/payroll'
+    | '/recruitment'
+    | '/'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/_app/attendance'
+    | '/_app/companies'
+    | '/_app/contracts'
+    | '/_app/employees'
+    | '/_app/leave'
+    | '/_app/payroll'
+    | '/_app/recruitment'
+    | '/_app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -61,14 +150,77 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/recruitment': {
+      id: '/_app/recruitment'
+      path: '/recruitment'
+      fullPath: '/recruitment'
+      preLoaderRoute: typeof AppRecruitmentRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/payroll': {
+      id: '/_app/payroll'
+      path: '/payroll'
+      fullPath: '/payroll'
+      preLoaderRoute: typeof AppPayrollRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/leave': {
+      id: '/_app/leave'
+      path: '/leave'
+      fullPath: '/leave'
+      preLoaderRoute: typeof AppLeaveRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/employees': {
+      id: '/_app/employees'
+      path: '/employees'
+      fullPath: '/employees'
+      preLoaderRoute: typeof AppEmployeesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/contracts': {
+      id: '/_app/contracts'
+      path: '/contracts'
+      fullPath: '/contracts'
+      preLoaderRoute: typeof AppContractsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/companies': {
+      id: '/_app/companies'
+      path: '/companies'
+      fullPath: '/companies'
+      preLoaderRoute: typeof AppCompaniesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/attendance': {
+      id: '/_app/attendance'
+      path: '/attendance'
+      fullPath: '/attendance'
+      preLoaderRoute: typeof AppAttendanceRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAttendanceRoute: typeof AppAttendanceRoute
+  AppCompaniesRoute: typeof AppCompaniesRoute
+  AppContractsRoute: typeof AppContractsRoute
+  AppEmployeesRoute: typeof AppEmployeesRoute
+  AppLeaveRoute: typeof AppLeaveRoute
+  AppPayrollRoute: typeof AppPayrollRoute
+  AppRecruitmentRoute: typeof AppRecruitmentRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAttendanceRoute: AppAttendanceRoute,
+  AppCompaniesRoute: AppCompaniesRoute,
+  AppContractsRoute: AppContractsRoute,
+  AppEmployeesRoute: AppEmployeesRoute,
+  AppLeaveRoute: AppLeaveRoute,
+  AppPayrollRoute: AppPayrollRoute,
+  AppRecruitmentRoute: AppRecruitmentRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
