@@ -11,13 +11,25 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppTrainingRouteImport } from './routes/_app.training'
+import { Route as AppTasksRouteImport } from './routes/_app.tasks'
+import { Route as AppSubscriptionsRouteImport } from './routes/_app.subscriptions'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppRecruitmentRouteImport } from './routes/_app.recruitment'
+import { Route as AppPerformanceRouteImport } from './routes/_app.performance'
 import { Route as AppPayrollRouteImport } from './routes/_app.payroll'
+import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
 import { Route as AppLeaveRouteImport } from './routes/_app.leave'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
+import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppContractsRouteImport } from './routes/_app.contracts'
 import { Route as AppCompaniesRouteImport } from './routes/_app.companies'
 import { Route as AppAttendanceRouteImport } from './routes/_app.attendance'
+import { Route as AppAssetsRouteImport } from './routes/_app.assets'
+import { Route as AppAiRouteImport } from './routes/_app.ai'
+import { Route as AppAdminRouteImport } from './routes/_app.admin'
+import { Route as AppAccountingRouteImport } from './routes/_app.accounting'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -28,14 +40,49 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTrainingRoute = AppTrainingRouteImport.update({
+  id: '/training',
+  path: '/training',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTasksRoute = AppTasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSubscriptionsRoute = AppSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsRoute = AppReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppRecruitmentRoute = AppRecruitmentRouteImport.update({
   id: '/recruitment',
   path: '/recruitment',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPerformanceRoute = AppPerformanceRouteImport.update({
+  id: '/performance',
+  path: '/performance',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPayrollRoute = AppPayrollRouteImport.update({
   id: '/payroll',
   path: '/payroll',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotificationsRoute = AppNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
 const AppLeaveRoute = AppLeaveRouteImport.update({
@@ -46,6 +93,11 @@ const AppLeaveRoute = AppLeaveRouteImport.update({
 const AppEmployeesRoute = AppEmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDocumentsRoute = AppDocumentsRouteImport.update({
+  id: '/documents',
+  path: '/documents',
   getParentRoute: () => AppRoute,
 } as any)
 const AppContractsRoute = AppContractsRouteImport.update({
@@ -63,70 +115,162 @@ const AppAttendanceRoute = AppAttendanceRouteImport.update({
   path: '/attendance',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAssetsRoute = AppAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAiRoute = AppAiRouteImport.update({
+  id: '/ai',
+  path: '/ai',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAccountingRoute = AppAccountingRouteImport.update({
+  id: '/accounting',
+  path: '/accounting',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/accounting': typeof AppAccountingRoute
+  '/admin': typeof AppAdminRoute
+  '/ai': typeof AppAiRoute
+  '/assets': typeof AppAssetsRoute
   '/attendance': typeof AppAttendanceRoute
   '/companies': typeof AppCompaniesRoute
   '/contracts': typeof AppContractsRoute
+  '/documents': typeof AppDocumentsRoute
   '/employees': typeof AppEmployeesRoute
   '/leave': typeof AppLeaveRoute
+  '/notifications': typeof AppNotificationsRoute
   '/payroll': typeof AppPayrollRoute
+  '/performance': typeof AppPerformanceRoute
   '/recruitment': typeof AppRecruitmentRoute
+  '/reports': typeof AppReportsRoute
+  '/settings': typeof AppSettingsRoute
+  '/subscriptions': typeof AppSubscriptionsRoute
+  '/tasks': typeof AppTasksRoute
+  '/training': typeof AppTrainingRoute
 }
 export interface FileRoutesByTo {
+  '/accounting': typeof AppAccountingRoute
+  '/admin': typeof AppAdminRoute
+  '/ai': typeof AppAiRoute
+  '/assets': typeof AppAssetsRoute
   '/attendance': typeof AppAttendanceRoute
   '/companies': typeof AppCompaniesRoute
   '/contracts': typeof AppContractsRoute
+  '/documents': typeof AppDocumentsRoute
   '/employees': typeof AppEmployeesRoute
   '/leave': typeof AppLeaveRoute
+  '/notifications': typeof AppNotificationsRoute
   '/payroll': typeof AppPayrollRoute
+  '/performance': typeof AppPerformanceRoute
   '/recruitment': typeof AppRecruitmentRoute
+  '/reports': typeof AppReportsRoute
+  '/settings': typeof AppSettingsRoute
+  '/subscriptions': typeof AppSubscriptionsRoute
+  '/tasks': typeof AppTasksRoute
+  '/training': typeof AppTrainingRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/_app/accounting': typeof AppAccountingRoute
+  '/_app/admin': typeof AppAdminRoute
+  '/_app/ai': typeof AppAiRoute
+  '/_app/assets': typeof AppAssetsRoute
   '/_app/attendance': typeof AppAttendanceRoute
   '/_app/companies': typeof AppCompaniesRoute
   '/_app/contracts': typeof AppContractsRoute
+  '/_app/documents': typeof AppDocumentsRoute
   '/_app/employees': typeof AppEmployeesRoute
   '/_app/leave': typeof AppLeaveRoute
+  '/_app/notifications': typeof AppNotificationsRoute
   '/_app/payroll': typeof AppPayrollRoute
+  '/_app/performance': typeof AppPerformanceRoute
   '/_app/recruitment': typeof AppRecruitmentRoute
+  '/_app/reports': typeof AppReportsRoute
+  '/_app/settings': typeof AppSettingsRoute
+  '/_app/subscriptions': typeof AppSubscriptionsRoute
+  '/_app/tasks': typeof AppTasksRoute
+  '/_app/training': typeof AppTrainingRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/accounting'
+    | '/admin'
+    | '/ai'
+    | '/assets'
     | '/attendance'
     | '/companies'
     | '/contracts'
+    | '/documents'
     | '/employees'
     | '/leave'
+    | '/notifications'
     | '/payroll'
+    | '/performance'
     | '/recruitment'
+    | '/reports'
+    | '/settings'
+    | '/subscriptions'
+    | '/tasks'
+    | '/training'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/accounting'
+    | '/admin'
+    | '/ai'
+    | '/assets'
     | '/attendance'
     | '/companies'
     | '/contracts'
+    | '/documents'
     | '/employees'
     | '/leave'
+    | '/notifications'
     | '/payroll'
+    | '/performance'
     | '/recruitment'
+    | '/reports'
+    | '/settings'
+    | '/subscriptions'
+    | '/tasks'
+    | '/training'
     | '/'
   id:
     | '__root__'
     | '/_app'
+    | '/_app/accounting'
+    | '/_app/admin'
+    | '/_app/ai'
+    | '/_app/assets'
     | '/_app/attendance'
     | '/_app/companies'
     | '/_app/contracts'
+    | '/_app/documents'
     | '/_app/employees'
     | '/_app/leave'
+    | '/_app/notifications'
     | '/_app/payroll'
+    | '/_app/performance'
     | '/_app/recruitment'
+    | '/_app/reports'
+    | '/_app/settings'
+    | '/_app/subscriptions'
+    | '/_app/tasks'
+    | '/_app/training'
     | '/_app/'
   fileRoutesById: FileRoutesById
 }
@@ -150,6 +294,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/training': {
+      id: '/_app/training'
+      path: '/training'
+      fullPath: '/training'
+      preLoaderRoute: typeof AppTrainingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/tasks': {
+      id: '/_app/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof AppTasksRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/subscriptions': {
+      id: '/_app/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/subscriptions'
+      preLoaderRoute: typeof AppSubscriptionsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports': {
+      id: '/_app/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AppReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/recruitment': {
       id: '/_app/recruitment'
       path: '/recruitment'
@@ -157,11 +336,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRecruitmentRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/performance': {
+      id: '/_app/performance'
+      path: '/performance'
+      fullPath: '/performance'
+      preLoaderRoute: typeof AppPerformanceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/payroll': {
       id: '/_app/payroll'
       path: '/payroll'
       fullPath: '/payroll'
       preLoaderRoute: typeof AppPayrollRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/notifications': {
+      id: '/_app/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/leave': {
@@ -176,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/employees'
       fullPath: '/employees'
       preLoaderRoute: typeof AppEmployeesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/documents': {
+      id: '/_app/documents'
+      path: '/documents'
+      fullPath: '/documents'
+      preLoaderRoute: typeof AppDocumentsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/contracts': {
@@ -199,28 +399,80 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAttendanceRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/assets': {
+      id: '/_app/assets'
+      path: '/assets'
+      fullPath: '/assets'
+      preLoaderRoute: typeof AppAssetsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ai': {
+      id: '/_app/ai'
+      path: '/ai'
+      fullPath: '/ai'
+      preLoaderRoute: typeof AppAiRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin': {
+      id: '/_app/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/accounting': {
+      id: '/_app/accounting'
+      path: '/accounting'
+      fullPath: '/accounting'
+      preLoaderRoute: typeof AppAccountingRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAccountingRoute: typeof AppAccountingRoute
+  AppAdminRoute: typeof AppAdminRoute
+  AppAiRoute: typeof AppAiRoute
+  AppAssetsRoute: typeof AppAssetsRoute
   AppAttendanceRoute: typeof AppAttendanceRoute
   AppCompaniesRoute: typeof AppCompaniesRoute
   AppContractsRoute: typeof AppContractsRoute
+  AppDocumentsRoute: typeof AppDocumentsRoute
   AppEmployeesRoute: typeof AppEmployeesRoute
   AppLeaveRoute: typeof AppLeaveRoute
+  AppNotificationsRoute: typeof AppNotificationsRoute
   AppPayrollRoute: typeof AppPayrollRoute
+  AppPerformanceRoute: typeof AppPerformanceRoute
   AppRecruitmentRoute: typeof AppRecruitmentRoute
+  AppReportsRoute: typeof AppReportsRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppSubscriptionsRoute: typeof AppSubscriptionsRoute
+  AppTasksRoute: typeof AppTasksRoute
+  AppTrainingRoute: typeof AppTrainingRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAccountingRoute: AppAccountingRoute,
+  AppAdminRoute: AppAdminRoute,
+  AppAiRoute: AppAiRoute,
+  AppAssetsRoute: AppAssetsRoute,
   AppAttendanceRoute: AppAttendanceRoute,
   AppCompaniesRoute: AppCompaniesRoute,
   AppContractsRoute: AppContractsRoute,
+  AppDocumentsRoute: AppDocumentsRoute,
   AppEmployeesRoute: AppEmployeesRoute,
   AppLeaveRoute: AppLeaveRoute,
+  AppNotificationsRoute: AppNotificationsRoute,
   AppPayrollRoute: AppPayrollRoute,
+  AppPerformanceRoute: AppPerformanceRoute,
   AppRecruitmentRoute: AppRecruitmentRoute,
+  AppReportsRoute: AppReportsRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppSubscriptionsRoute: AppSubscriptionsRoute,
+  AppTasksRoute: AppTasksRoute,
+  AppTrainingRoute: AppTrainingRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
