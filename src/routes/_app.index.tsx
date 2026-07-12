@@ -203,7 +203,8 @@ function DashboardPage() {
               <div className="flex justify-between text-xs text-muted-foreground mb-1.5"><span>Renewal rate</span><span className="font-medium text-foreground">86%</span></div>
               <Progress value={86} className="h-1.5" />
             </div>
-          </SectionCard>
+          </div>
+        </SectionCard>
       </div>
     </>
   );
