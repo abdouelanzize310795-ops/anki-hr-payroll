@@ -1,0 +1,4 @@
+-- payroll module (applied remotely as payroll_module on uokizxiwarlpwzqpkwbf)
+-- Tables: payroll_components, payroll_runs, payslips, payslip_lines
+-- RPCs: ensure_default_payroll_components, calculate_payroll_run, transition_payroll_run
+-- Note: all tax/social rates are company-configurable (default 0)

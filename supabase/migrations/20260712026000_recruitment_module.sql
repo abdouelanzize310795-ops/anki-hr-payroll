@@ -1,0 +1,3 @@
+-- recruitment module (applied remotely as recruitment_module)
+-- Tables: job_openings, candidates
+-- Enums: job_opening_status, candidate_stage

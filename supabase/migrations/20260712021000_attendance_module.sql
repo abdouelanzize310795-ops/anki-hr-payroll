@@ -1,0 +1,4 @@
+-- attendance module (applied remotely as attendance_module on uokizxiwarlpwzqpkwbf)
+-- Types: attendance_status
+-- Tables: attendance_records
+-- RPCs: clock_attendance, attendance_compute_minutes

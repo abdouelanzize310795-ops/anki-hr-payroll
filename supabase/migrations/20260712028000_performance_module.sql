@@ -1,0 +1,3 @@
+-- performance module (applied remotely as performance_module)
+-- Tables: performance_reviews
+-- Enums: performance_review_status

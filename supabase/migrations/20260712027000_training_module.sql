@@ -1,0 +1,3 @@
+-- training module (applied remotely as training_module)
+-- Tables: training_courses, training_enrollments
+-- Enums: training_course_status, training_enrollment_status

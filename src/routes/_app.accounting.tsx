@@ -1,74 +1,226 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, getRouteApi, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app/AppShell";
-import { SectionCard, StatCard, StatusPill } from "@/components/app/primitives";
+import { EmptyPlaceholder, Money, SectionCard, StatCard, StatusPill } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
-import { Calculator, TrendingUp, TrendingDown, Wallet, Plus } from "lucide-react";
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Calculator, TrendingUp, TrendingDown, Wallet, Building2, Landmark,
+} from "lucide-react";
+import {
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+} from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { listCompanies } from "@/modules/companies/company.functions";
+import { getAccountingOverview } from "@/modules/accounting/accounting.functions";
+import type { CompanyWithMeta } from "@/modules/companies/types";
+import { isPlatformAdmin } from "@/lib/auth/auth.functions";
 
 export const Route = createFileRoute("/_app/accounting")({ component: AccountingPage });
 
-const data = [
-  { m: "Jan", rev: 320, exp: 210 }, { m: "Feb", rev: 340, exp: 220 },
-  { m: "Mar", rev: 380, exp: 240 }, { m: "Apr", rev: 410, exp: 260 },
-  { m: "May", rev: 445, exp: 280 }, { m: "Jun", rev: 470, exp: 300 }, { m: "Jul", rev: 512, exp: 315 },
-];
-const entries = [
-  { date: "Jul 12", desc: "Payroll — Nigeria", cat: "Personnel", amt: "-$68,420", status: "Paid" },
-  { date: "Jul 10", desc: "Client invoice #A-1042", cat: "Revenue", amt: "+$24,800", status: "Paid" },
-  { date: "Jul 08", desc: "Office rent — Lagos HQ", cat: "Facilities", amt: "-$4,200", status: "Paid" },
-  { date: "Jul 05", desc: "SaaS subscriptions", cat: "Tools", amt: "-$1,840", status: "Pending" },
-];
+const appRouteApi = getRouteApi("/_app");
+
+function formatK(n: number) {
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} M`;
+  if (Math.abs(n) >= 1000) return `${Math.round(n / 1000)} k`;
+  return new Intl.NumberFormat("fr-KM", { maximumFractionDigits: 0 }).format(n);
+}
 
 function AccountingPage() {
+  const { auth } = appRouteApi.useRouteContext();
+  const admin = isPlatformAdmin(auth);
+  const profileCompanyId = auth.profile?.company_id ?? null;
+
+  const [companies, setCompanies] = useState<CompanyWithMeta[]>([]);
+  const [companyFilter, setCompanyFilter] = useState(profileCompanyId ?? "all");
+  const [data, setData] = useState<Awaited<ReturnType<typeof getAccountingOverview>> | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const lockedCompanyId = admin ? null : profileCompanyId;
+  const effectiveCompanyId =
+    lockedCompanyId ?? (companyFilter === "all" ? undefined : companyFilter);
+
+  useEffect(() => {
+    void (async () => {
+      if (admin) setCompanies(await listCompanies());
+    })();
+  }, [admin]);
+
+  useEffect(() => {
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        setData(await getAccountingOverview({ data: { companyId: effectiveCompanyId } }));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Chargement impossible");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [companyFilter, lockedCompanyId]);
+
   return (
     <>
-      <PageHeader badge="Finance" title="Accounting"
-        description="Revenue, expenses and general ledger."
-        actions={<Button size="sm"><Plus className="mr-1.5 h-4 w-4" />New entry</Button>}
+      <PageHeader
+        badge="Finance"
+        title="Comptabilité"
+        description="Charges de personnel et virements issus de la paie AnkibaPay."
+        actions={
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/payroll">
+              <Calculator className="mr-1.5 h-4 w-4" />
+              Cycles de paie
+            </Link>
+          </Button>
+        }
       />
+
+      {admin && (
+        <div className="mb-4">
+          <Select value={companyFilter} onValueChange={setCompanyFilter}>
+            <SelectTrigger className="w-full sm:w-56">
+              <Building2 className="mr-2 h-4 w-4 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les entreprises</SelectItem>
+              {companies.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.legal_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {error && (
+        <p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Revenue MTD" value="$512K" delta="+9%" trend="up" icon={TrendingUp} accent="success" />
-        <StatCard label="Expenses MTD" value="$315K" delta="+3%" trend="down" icon={TrendingDown} accent="destructive" />
-        <StatCard label="Net margin" value="38.4%" delta="+2.1%" trend="up" icon={Calculator} accent="primary" />
-        <StatCard label="Cash on hand" value="$1.24M" icon={Wallet} accent="gold" />
+        <StatCard
+          label={`Net payé ${data?.year ?? ""}`}
+          value={loading ? "…" : formatK(data?.netPaidYtd ?? 0)}
+          icon={Wallet}
+          accent="success"
+          delta={data?.paidCount ? `${data.paidCount} cycle(s)` : undefined}
+          deltaLabel="payés"
+          trend="up"
+        />
+        <StatCard
+          label="Masse brute YTD"
+          value={loading ? "…" : formatK(data?.grossYtd ?? 0)}
+          icon={TrendingUp}
+          accent="primary"
+        />
+        <StatCard
+          label="Coût employeur YTD"
+          value={loading ? "…" : formatK(data?.employerYtd ?? 0)}
+          icon={TrendingDown}
+          accent="destructive"
+        />
+        <StatCard
+          label="En attente de paiement"
+          value={loading ? "…" : formatK(data?.pendingNet ?? 0)}
+          icon={Landmark}
+          accent="gold"
+          delta={data?.pendingCount ? `${data.pendingCount}` : undefined}
+          deltaLabel="cycle(s)"
+          trend="down"
+        />
       </div>
+
       <div className="mt-6">
-        <SectionCard title="Revenue vs expenses" description="Trailing 7 months ($K)">
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data}>
-                <defs>
-                  <linearGradient id="ar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--color-success)" stopOpacity={0.35} /><stop offset="100%" stopColor="var(--color-success)" stopOpacity={0} /></linearGradient>
-                  <linearGradient id="ae" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--color-destructive)" stopOpacity={0.3} /><stop offset="100%" stopColor="var(--color-destructive)" stopOpacity={0} /></linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-                <XAxis dataKey="m" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "var(--color-card)", border: "1px solid var(--color-border)", borderRadius: 12 }} />
-                <Area type="monotone" dataKey="rev" stroke="var(--color-success)" strokeWidth={2.5} fill="url(#ar)" />
-                <Area type="monotone" dataKey="exp" stroke="var(--color-destructive)" strokeWidth={2.5} fill="url(#ae)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+        <SectionCard
+          title="Charges de personnel"
+          description="Brut / net / coût employeur (milliers KMF)"
+        >
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Chargement…</p>
+          ) : (data?.trend.length ?? 0) === 0 ? (
+            <EmptyPlaceholder
+              title="Aucune écriture de paie"
+              description="Calculez un cycle sur Paie pour voir les charges ici."
+              icon={Calculator}
+            />
+          ) : (
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data!.trend}>
+                  <defs>
+                    <linearGradient id="acc-brut" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="acc-net" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--color-success)" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="var(--color-success)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis dataKey="m" stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--color-muted-foreground)" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--color-card)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: 12,
+                    }}
+                  />
+                  <Legend />
+                  <Area type="monotone" dataKey="brut" name="Brut" stroke="var(--color-primary)" strokeWidth={2.5} fill="url(#acc-brut)" />
+                  <Area type="monotone" dataKey="net" name="Net" stroke="var(--color-success)" strokeWidth={2.5} fill="url(#acc-net)" />
+                  <Area type="monotone" dataKey="cout" name="Coût emp." stroke="var(--color-destructive)" strokeWidth={2} fill="transparent" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </SectionCard>
       </div>
+
       <div className="mt-6">
-        <SectionCard title="Recent entries">
-          <Table>
-            <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Description</TableHead><TableHead>Category</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {entries.map((e, i) => (
-                <TableRow key={i}>
-                  <TableCell className="text-muted-foreground">{e.date}</TableCell>
-                  <TableCell className="font-medium">{e.desc}</TableCell>
-                  <TableCell className="text-muted-foreground">{e.cat}</TableCell>
-                  <TableCell className={e.amt.startsWith("+") ? "text-success font-semibold" : "text-foreground font-medium"}>{e.amt}</TableCell>
-                  <TableCell><StatusPill status={e.status} /></TableCell>
+        <SectionCard title="Journal paie & virements" description="Écritures dérivées des cycles et lots bancaires">
+          {(data?.entries.length ?? 0) === 0 && !loading ? (
+            <EmptyPlaceholder
+              title="Journal vide"
+              description="Les cycles calculés et les lots de virement apparaîtront ici."
+              icon={Landmark}
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Catégorie</TableHead>
+                  <TableHead className="text-right">Montant</TableHead>
+                  <TableHead>Statut</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {(data?.entries ?? []).map((e) => (
+                  <TableRow key={e.id}>
+                    <TableCell className="text-muted-foreground">{e.date}</TableCell>
+                    <TableCell className="font-medium">
+                      <a href={e.href} className="hover:text-primary hover:underline">
+                        {e.description}
+                      </a>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{e.category}</TableCell>
+                    <TableCell className="text-right font-medium text-foreground">
+                      <Money value={e.amount} currency={e.currency} />
+                    </TableCell>
+                    <TableCell><StatusPill status={e.status} /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </SectionCard>
       </div>
     </>

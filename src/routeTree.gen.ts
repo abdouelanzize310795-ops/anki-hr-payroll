@@ -9,8 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppTransfersRouteImport } from './routes/_app.transfers'
 import { Route as AppTrainingRouteImport } from './routes/_app.training'
 import { Route as AppTasksRouteImport } from './routes/_app.tasks'
 import { Route as AppSubscriptionsRouteImport } from './routes/_app.subscriptions'
@@ -30,7 +34,28 @@ import { Route as AppAssetsRouteImport } from './routes/_app.assets'
 import { Route as AppAiRouteImport } from './routes/_app.ai'
 import { Route as AppAdminRouteImport } from './routes/_app.admin'
 import { Route as AppAccountingRouteImport } from './routes/_app.accounting'
+import { Route as AppTransfersBatchIdRouteImport } from './routes/_app.transfers.$batchId'
+import { Route as AppPayrollRunIdRouteImport } from './routes/_app.payroll.$runId'
+import { Route as AppEmployeesEmployeeIdRouteImport } from './routes/_app.employees.$employeeId'
+import { Route as AppContractsContractIdRouteImport } from './routes/_app.contracts.$contractId'
+import { Route as AppCompaniesCompanyIdRouteImport } from './routes/_app.companies.$companyId'
+import { Route as AppPayrollPayslipPayslipIdRouteImport } from './routes/_app.payroll.payslip.$payslipId'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -38,6 +63,11 @@ const AppRoute = AppRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTransfersRoute = AppTransfersRouteImport.update({
+  id: '/transfers',
+  path: '/transfers',
   getParentRoute: () => AppRoute,
 } as any)
 const AppTrainingRoute = AppTrainingRouteImport.update({
@@ -135,21 +165,55 @@ const AppAccountingRoute = AppAccountingRouteImport.update({
   path: '/accounting',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTransfersBatchIdRoute = AppTransfersBatchIdRouteImport.update({
+  id: '/$batchId',
+  path: '/$batchId',
+  getParentRoute: () => AppTransfersRoute,
+} as any)
+const AppPayrollRunIdRoute = AppPayrollRunIdRouteImport.update({
+  id: '/$runId',
+  path: '/$runId',
+  getParentRoute: () => AppPayrollRoute,
+} as any)
+const AppEmployeesEmployeeIdRoute = AppEmployeesEmployeeIdRouteImport.update({
+  id: '/$employeeId',
+  path: '/$employeeId',
+  getParentRoute: () => AppEmployeesRoute,
+} as any)
+const AppContractsContractIdRoute = AppContractsContractIdRouteImport.update({
+  id: '/$contractId',
+  path: '/$contractId',
+  getParentRoute: () => AppContractsRoute,
+} as any)
+const AppCompaniesCompanyIdRoute = AppCompaniesCompanyIdRouteImport.update({
+  id: '/$companyId',
+  path: '/$companyId',
+  getParentRoute: () => AppCompaniesRoute,
+} as any)
+const AppPayrollPayslipPayslipIdRoute =
+  AppPayrollPayslipPayslipIdRouteImport.update({
+    id: '/payslip/$payslipId',
+    path: '/payslip/$payslipId',
+    getParentRoute: () => AppPayrollRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
+  '/signup': typeof SignupRoute
   '/accounting': typeof AppAccountingRoute
   '/admin': typeof AppAdminRoute
   '/ai': typeof AppAiRoute
   '/assets': typeof AppAssetsRoute
   '/attendance': typeof AppAttendanceRoute
-  '/companies': typeof AppCompaniesRoute
-  '/contracts': typeof AppContractsRoute
+  '/companies': typeof AppCompaniesRouteWithChildren
+  '/contracts': typeof AppContractsRouteWithChildren
   '/documents': typeof AppDocumentsRoute
-  '/employees': typeof AppEmployeesRoute
+  '/employees': typeof AppEmployeesRouteWithChildren
   '/leave': typeof AppLeaveRoute
   '/notifications': typeof AppNotificationsRoute
-  '/payroll': typeof AppPayrollRoute
+  '/payroll': typeof AppPayrollRouteWithChildren
   '/performance': typeof AppPerformanceRoute
   '/recruitment': typeof AppRecruitmentRoute
   '/reports': typeof AppReportsRoute
@@ -157,20 +221,30 @@ export interface FileRoutesByFullPath {
   '/subscriptions': typeof AppSubscriptionsRoute
   '/tasks': typeof AppTasksRoute
   '/training': typeof AppTrainingRoute
+  '/transfers': typeof AppTransfersRouteWithChildren
+  '/companies/$companyId': typeof AppCompaniesCompanyIdRoute
+  '/contracts/$contractId': typeof AppContractsContractIdRoute
+  '/employees/$employeeId': typeof AppEmployeesEmployeeIdRoute
+  '/payroll/$runId': typeof AppPayrollRunIdRoute
+  '/transfers/$batchId': typeof AppTransfersBatchIdRoute
+  '/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
 }
 export interface FileRoutesByTo {
+  '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
+  '/signup': typeof SignupRoute
   '/accounting': typeof AppAccountingRoute
   '/admin': typeof AppAdminRoute
   '/ai': typeof AppAiRoute
   '/assets': typeof AppAssetsRoute
   '/attendance': typeof AppAttendanceRoute
-  '/companies': typeof AppCompaniesRoute
-  '/contracts': typeof AppContractsRoute
+  '/companies': typeof AppCompaniesRouteWithChildren
+  '/contracts': typeof AppContractsRouteWithChildren
   '/documents': typeof AppDocumentsRoute
-  '/employees': typeof AppEmployeesRoute
+  '/employees': typeof AppEmployeesRouteWithChildren
   '/leave': typeof AppLeaveRoute
   '/notifications': typeof AppNotificationsRoute
-  '/payroll': typeof AppPayrollRoute
+  '/payroll': typeof AppPayrollRouteWithChildren
   '/performance': typeof AppPerformanceRoute
   '/recruitment': typeof AppRecruitmentRoute
   '/reports': typeof AppReportsRoute
@@ -178,23 +252,33 @@ export interface FileRoutesByTo {
   '/subscriptions': typeof AppSubscriptionsRoute
   '/tasks': typeof AppTasksRoute
   '/training': typeof AppTrainingRoute
+  '/transfers': typeof AppTransfersRouteWithChildren
   '/': typeof AppIndexRoute
+  '/companies/$companyId': typeof AppCompaniesCompanyIdRoute
+  '/contracts/$contractId': typeof AppContractsContractIdRoute
+  '/employees/$employeeId': typeof AppEmployeesEmployeeIdRoute
+  '/payroll/$runId': typeof AppPayrollRunIdRoute
+  '/transfers/$batchId': typeof AppTransfersBatchIdRoute
+  '/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/login': typeof LoginRoute
+  '/onboarding': typeof OnboardingRoute
+  '/signup': typeof SignupRoute
   '/_app/accounting': typeof AppAccountingRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/ai': typeof AppAiRoute
   '/_app/assets': typeof AppAssetsRoute
   '/_app/attendance': typeof AppAttendanceRoute
-  '/_app/companies': typeof AppCompaniesRoute
-  '/_app/contracts': typeof AppContractsRoute
+  '/_app/companies': typeof AppCompaniesRouteWithChildren
+  '/_app/contracts': typeof AppContractsRouteWithChildren
   '/_app/documents': typeof AppDocumentsRoute
-  '/_app/employees': typeof AppEmployeesRoute
+  '/_app/employees': typeof AppEmployeesRouteWithChildren
   '/_app/leave': typeof AppLeaveRoute
   '/_app/notifications': typeof AppNotificationsRoute
-  '/_app/payroll': typeof AppPayrollRoute
+  '/_app/payroll': typeof AppPayrollRouteWithChildren
   '/_app/performance': typeof AppPerformanceRoute
   '/_app/recruitment': typeof AppRecruitmentRoute
   '/_app/reports': typeof AppReportsRoute
@@ -202,12 +286,22 @@ export interface FileRoutesById {
   '/_app/subscriptions': typeof AppSubscriptionsRoute
   '/_app/tasks': typeof AppTasksRoute
   '/_app/training': typeof AppTrainingRoute
+  '/_app/transfers': typeof AppTransfersRouteWithChildren
   '/_app/': typeof AppIndexRoute
+  '/_app/companies/$companyId': typeof AppCompaniesCompanyIdRoute
+  '/_app/contracts/$contractId': typeof AppContractsContractIdRoute
+  '/_app/employees/$employeeId': typeof AppEmployeesEmployeeIdRoute
+  '/_app/payroll/$runId': typeof AppPayrollRunIdRoute
+  '/_app/transfers/$batchId': typeof AppTransfersBatchIdRoute
+  '/_app/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/login'
+    | '/onboarding'
+    | '/signup'
     | '/accounting'
     | '/admin'
     | '/ai'
@@ -227,8 +321,18 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/tasks'
     | '/training'
+    | '/transfers'
+    | '/companies/$companyId'
+    | '/contracts/$contractId'
+    | '/employees/$employeeId'
+    | '/payroll/$runId'
+    | '/transfers/$batchId'
+    | '/payroll/payslip/$payslipId'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/login'
+    | '/onboarding'
+    | '/signup'
     | '/accounting'
     | '/admin'
     | '/ai'
@@ -248,10 +352,20 @@ export interface FileRouteTypes {
     | '/subscriptions'
     | '/tasks'
     | '/training'
+    | '/transfers'
     | '/'
+    | '/companies/$companyId'
+    | '/contracts/$contractId'
+    | '/employees/$employeeId'
+    | '/payroll/$runId'
+    | '/transfers/$batchId'
+    | '/payroll/payslip/$payslipId'
   id:
     | '__root__'
     | '/_app'
+    | '/login'
+    | '/onboarding'
+    | '/signup'
     | '/_app/accounting'
     | '/_app/admin'
     | '/_app/ai'
@@ -271,15 +385,46 @@ export interface FileRouteTypes {
     | '/_app/subscriptions'
     | '/_app/tasks'
     | '/_app/training'
+    | '/_app/transfers'
     | '/_app/'
+    | '/_app/companies/$companyId'
+    | '/_app/contracts/$contractId'
+    | '/_app/employees/$employeeId'
+    | '/_app/payroll/$runId'
+    | '/_app/transfers/$batchId'
+    | '/_app/payroll/payslip/$payslipId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  LoginRoute: typeof LoginRoute
+  OnboardingRoute: typeof OnboardingRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -292,6 +437,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/transfers': {
+      id: '/_app/transfers'
+      path: '/transfers'
+      fullPath: '/transfers'
+      preLoaderRoute: typeof AppTransfersRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/training': {
@@ -427,8 +579,112 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/transfers/$batchId': {
+      id: '/_app/transfers/$batchId'
+      path: '/$batchId'
+      fullPath: '/transfers/$batchId'
+      preLoaderRoute: typeof AppTransfersBatchIdRouteImport
+      parentRoute: typeof AppTransfersRoute
+    }
+    '/_app/payroll/$runId': {
+      id: '/_app/payroll/$runId'
+      path: '/$runId'
+      fullPath: '/payroll/$runId'
+      preLoaderRoute: typeof AppPayrollRunIdRouteImport
+      parentRoute: typeof AppPayrollRoute
+    }
+    '/_app/employees/$employeeId': {
+      id: '/_app/employees/$employeeId'
+      path: '/$employeeId'
+      fullPath: '/employees/$employeeId'
+      preLoaderRoute: typeof AppEmployeesEmployeeIdRouteImport
+      parentRoute: typeof AppEmployeesRoute
+    }
+    '/_app/contracts/$contractId': {
+      id: '/_app/contracts/$contractId'
+      path: '/$contractId'
+      fullPath: '/contracts/$contractId'
+      preLoaderRoute: typeof AppContractsContractIdRouteImport
+      parentRoute: typeof AppContractsRoute
+    }
+    '/_app/companies/$companyId': {
+      id: '/_app/companies/$companyId'
+      path: '/$companyId'
+      fullPath: '/companies/$companyId'
+      preLoaderRoute: typeof AppCompaniesCompanyIdRouteImport
+      parentRoute: typeof AppCompaniesRoute
+    }
+    '/_app/payroll/payslip/$payslipId': {
+      id: '/_app/payroll/payslip/$payslipId'
+      path: '/payslip/$payslipId'
+      fullPath: '/payroll/payslip/$payslipId'
+      preLoaderRoute: typeof AppPayrollPayslipPayslipIdRouteImport
+      parentRoute: typeof AppPayrollRoute
+    }
   }
 }
+
+interface AppCompaniesRouteChildren {
+  AppCompaniesCompanyIdRoute: typeof AppCompaniesCompanyIdRoute
+}
+
+const AppCompaniesRouteChildren: AppCompaniesRouteChildren = {
+  AppCompaniesCompanyIdRoute: AppCompaniesCompanyIdRoute,
+}
+
+const AppCompaniesRouteWithChildren = AppCompaniesRoute._addFileChildren(
+  AppCompaniesRouteChildren,
+)
+
+interface AppContractsRouteChildren {
+  AppContractsContractIdRoute: typeof AppContractsContractIdRoute
+}
+
+const AppContractsRouteChildren: AppContractsRouteChildren = {
+  AppContractsContractIdRoute: AppContractsContractIdRoute,
+}
+
+const AppContractsRouteWithChildren = AppContractsRoute._addFileChildren(
+  AppContractsRouteChildren,
+)
+
+interface AppEmployeesRouteChildren {
+  AppEmployeesEmployeeIdRoute: typeof AppEmployeesEmployeeIdRoute
+}
+
+const AppEmployeesRouteChildren: AppEmployeesRouteChildren = {
+  AppEmployeesEmployeeIdRoute: AppEmployeesEmployeeIdRoute,
+}
+
+const AppEmployeesRouteWithChildren = AppEmployeesRoute._addFileChildren(
+  AppEmployeesRouteChildren,
+)
+
+interface AppPayrollRouteChildren {
+  AppPayrollRunIdRoute: typeof AppPayrollRunIdRoute
+  AppPayrollPayslipPayslipIdRoute: typeof AppPayrollPayslipPayslipIdRoute
+}
+
+const AppPayrollRouteChildren: AppPayrollRouteChildren = {
+  AppPayrollRunIdRoute: AppPayrollRunIdRoute,
+  AppPayrollPayslipPayslipIdRoute: AppPayrollPayslipPayslipIdRoute,
+}
+
+const AppPayrollRouteWithChildren = AppPayrollRoute._addFileChildren(
+  AppPayrollRouteChildren,
+)
+
+interface AppTransfersRouteChildren {
+  AppTransfersBatchIdRoute: typeof AppTransfersBatchIdRoute
+}
+
+const AppTransfersRouteChildren: AppTransfersRouteChildren = {
+  AppTransfersBatchIdRoute: AppTransfersBatchIdRoute,
+}
+
+const AppTransfersRouteWithChildren = AppTransfersRoute._addFileChildren(
+  AppTransfersRouteChildren,
+)
 
 interface AppRouteChildren {
   AppAccountingRoute: typeof AppAccountingRoute
@@ -436,13 +692,13 @@ interface AppRouteChildren {
   AppAiRoute: typeof AppAiRoute
   AppAssetsRoute: typeof AppAssetsRoute
   AppAttendanceRoute: typeof AppAttendanceRoute
-  AppCompaniesRoute: typeof AppCompaniesRoute
-  AppContractsRoute: typeof AppContractsRoute
+  AppCompaniesRoute: typeof AppCompaniesRouteWithChildren
+  AppContractsRoute: typeof AppContractsRouteWithChildren
   AppDocumentsRoute: typeof AppDocumentsRoute
-  AppEmployeesRoute: typeof AppEmployeesRoute
+  AppEmployeesRoute: typeof AppEmployeesRouteWithChildren
   AppLeaveRoute: typeof AppLeaveRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
-  AppPayrollRoute: typeof AppPayrollRoute
+  AppPayrollRoute: typeof AppPayrollRouteWithChildren
   AppPerformanceRoute: typeof AppPerformanceRoute
   AppRecruitmentRoute: typeof AppRecruitmentRoute
   AppReportsRoute: typeof AppReportsRoute
@@ -450,6 +706,7 @@ interface AppRouteChildren {
   AppSubscriptionsRoute: typeof AppSubscriptionsRoute
   AppTasksRoute: typeof AppTasksRoute
   AppTrainingRoute: typeof AppTrainingRoute
+  AppTransfersRoute: typeof AppTransfersRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -459,13 +716,13 @@ const AppRouteChildren: AppRouteChildren = {
   AppAiRoute: AppAiRoute,
   AppAssetsRoute: AppAssetsRoute,
   AppAttendanceRoute: AppAttendanceRoute,
-  AppCompaniesRoute: AppCompaniesRoute,
-  AppContractsRoute: AppContractsRoute,
+  AppCompaniesRoute: AppCompaniesRouteWithChildren,
+  AppContractsRoute: AppContractsRouteWithChildren,
   AppDocumentsRoute: AppDocumentsRoute,
-  AppEmployeesRoute: AppEmployeesRoute,
+  AppEmployeesRoute: AppEmployeesRouteWithChildren,
   AppLeaveRoute: AppLeaveRoute,
   AppNotificationsRoute: AppNotificationsRoute,
-  AppPayrollRoute: AppPayrollRoute,
+  AppPayrollRoute: AppPayrollRouteWithChildren,
   AppPerformanceRoute: AppPerformanceRoute,
   AppRecruitmentRoute: AppRecruitmentRoute,
   AppReportsRoute: AppReportsRoute,
@@ -473,6 +730,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSubscriptionsRoute: AppSubscriptionsRoute,
   AppTasksRoute: AppTasksRoute,
   AppTrainingRoute: AppTrainingRoute,
+  AppTransfersRoute: AppTransfersRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
 }
 
@@ -480,7 +738,20 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  LoginRoute: LoginRoute,
+  OnboardingRoute: OnboardingRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

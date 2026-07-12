@@ -1,0 +1,4 @@
+-- leave module (applied remotely as leave_module on uokizxiwarlpwzqpkwbf)
+-- Types: leave_request_status
+-- Tables: leave_types, leave_balances, leave_requests
+-- RPCs: ensure_default_leave_types, ensure_leave_balance, transition_leave_request

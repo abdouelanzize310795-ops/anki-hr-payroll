@@ -1,0 +1,3 @@
+-- tasks module (applied remotely as tasks_module)
+-- Tables: hr_tasks
+-- Enums: task_status, task_priority

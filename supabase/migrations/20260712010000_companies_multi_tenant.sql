@@ -1,0 +1,2 @@
+﻿-- companies multi-tenant (applied remotely as companies_multi_tenant)
+-- See MCP migration history for full SQL applied to project uokizxiwarlpwzqpkwbf

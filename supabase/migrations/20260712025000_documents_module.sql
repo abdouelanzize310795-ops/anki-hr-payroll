@@ -1,0 +1,4 @@
+-- documents module (applied remotely as documents_module)
+-- Tables: hr_documents
+-- Storage bucket: hr-documents (private)
+-- Path: {company_id}/{doc_id}/{filename}

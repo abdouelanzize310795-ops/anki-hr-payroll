@@ -1,0 +1,3 @@
+-- assets module (applied remotely as assets_module)
+-- Tables: company_assets
+-- Enums: asset_category, asset_status
