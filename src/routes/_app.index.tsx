@@ -204,7 +204,6 @@ function DashboardPage() {
               <Progress value={86} className="h-1.5" />
             </div>
           </SectionCard>
-        </SectionCard>
       </div>
     </>
   );
