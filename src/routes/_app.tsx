@@ -17,6 +17,7 @@ const ACCESS_ALLOWED = new Set([
   "/subscriptions",
   "/company-access",
   "/settings",
+  "/notifications",
 ]);
 
 function pathAllowed(pathname: string, allowed: Set<string>): boolean {
@@ -56,7 +57,7 @@ export const Route = createFileRoute("/_app")({
       return { auth };
     }
 
-    // New tenants must pay then wait for platform-admin validation
+    // Unpaid, pending validation, or expired subscription → block workspace (data kept)
     if (auth.company && !isCompanyApproved(auth)) {
       const path = location.pathname;
       const allowed =
@@ -64,9 +65,13 @@ export const Route = createFileRoute("/_app")({
         path.startsWith("/onboarding") ||
         path.startsWith("/subscriptions") ||
         path.startsWith("/company-access") ||
-        path.startsWith("/settings");
+        path.startsWith("/settings") ||
+        path.startsWith("/notifications");
 
       if (!allowed) {
+        if (auth.company.subscription_status === "expired") {
+          throw redirect({ to: "/subscriptions" });
+        }
         if (auth.company.approval_status === "pending_payment") {
           throw redirect({ to: "/subscriptions" });
         }

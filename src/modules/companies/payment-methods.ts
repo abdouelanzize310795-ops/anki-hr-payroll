@@ -50,7 +50,8 @@ export const PAYMENT_METHODS: PaymentMethodInfo[] = [MVOLA_PAYMENT, POKETRA_PAYM
 export function getPaymentMethod(
   method: string | null | undefined,
 ): PaymentMethodInfo {
-  if (method === "poketra") return POKETRA_PAYMENT;
+  const normalized = (method ?? "").trim().toLowerCase();
+  if (normalized === "poketra") return POKETRA_PAYMENT;
   return MVOLA_PAYMENT;
 }
 

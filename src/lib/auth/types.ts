@@ -26,9 +26,11 @@ export type CompanyAccess = {
   legal_name: string;
   is_active: boolean;
   approval_status: "pending_payment" | "pending_approval" | "approved" | "rejected";
-  subscription_status: "none" | "pending" | "active" | "cancelled";
+  subscription_status: "none" | "pending" | "active" | "cancelled" | "expired";
   subscription_plan: string | null;
   subscription_paid_at: string | null;
+  subscription_starts_at: string | null;
+  subscription_ends_at: string | null;
   payment_reference: string | null;
   payment_method: string | null;
   rejection_reason: string | null;

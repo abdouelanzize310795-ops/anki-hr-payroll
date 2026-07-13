@@ -6,7 +6,12 @@ export type CompanyApprovalStatus =
   | "approved"
   | "rejected";
 
-export type CompanySubscriptionStatus = "none" | "pending" | "active" | "cancelled";
+export type CompanySubscriptionStatus =
+  | "none"
+  | "pending"
+  | "active"
+  | "cancelled"
+  | "expired";
 
 export type Country = {
   code: string;
@@ -53,6 +58,8 @@ export type Company = {
   subscription_status: CompanySubscriptionStatus;
   subscription_plan: string | null;
   subscription_paid_at: string | null;
+  subscription_starts_at: string | null;
+  subscription_ends_at: string | null;
   /** Unique code to put in the M'Vola transfer description */
   payment_reference: string | null;
   payment_method: string | null;
@@ -117,7 +124,8 @@ export const companyApprovalLabel: Record<CompanyApprovalStatus, string> = {
 
 export const companySubscriptionLabel: Record<CompanySubscriptionStatus, string> = {
   none: "Aucun",
-  pending: "M'Vola — en attente",
+  pending: "Paiement — en attente",
   active: "Actif",
   cancelled: "Annulé",
+  expired: "Expiré",
 };

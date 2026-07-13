@@ -2,7 +2,7 @@ import { createFileRoute, getRouteApi, Link, redirect } from "@tanstack/react-ro
 import { PageHeader } from "@/components/app/AppShell";
 import { SectionCard, StatusPill } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
-import { Clock, CreditCard, ShieldCheck, XCircle } from "lucide-react";
+import { AlertTriangle, Clock, CreditCard, ShieldCheck, XCircle } from "lucide-react";
 import { isCompanyApproved, isPlatformAdmin } from "@/lib/auth/auth.functions";
 import {
   companyApprovalLabel,
@@ -30,13 +30,18 @@ function CompanyAccessPage() {
   const company = auth.company;
 
   const status = company?.approval_status ?? "pending_payment";
+  const expired = company?.subscription_status === "expired";
 
   return (
     <>
       <PageHeader
         badge="Accès"
-        title="Validation de votre entreprise"
-        description={`Payez via M'Vola ou Poketra EXIM BANK avec votre code unique. Activation sous ${SUBSCRIPTION_SUPPORT.activationSlaHours} h.`}
+        title={expired ? "Abonnement expiré" : "Validation de votre entreprise"}
+        description={
+          expired
+            ? "Vos données sont conservées. Renouvelez pour débloquer l’accès."
+            : `Payez via M'Vola ou Poketra EXIM BANK avec votre code unique. Activation sous ${SUBSCRIPTION_SUPPORT.activationSlaHours} h.`
+        }
       />
 
       <div className="mx-auto max-w-2xl space-y-4">
@@ -69,6 +74,14 @@ function CompanyAccessPage() {
                 <span className="font-medium capitalize">{company.subscription_plan}</span>
               </div>
             )}
+            {company?.subscription_ends_at && (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Fin de période</span>
+                <span className="font-medium">
+                  {new Date(company.subscription_ends_at).toLocaleDateString("fr-KM")}
+                </span>
+              </div>
+            )}
             {company?.payment_method && (
               <div className="flex items-center justify-between gap-3">
                 <span className="text-muted-foreground">Paiement</span>
@@ -86,7 +99,22 @@ function CompanyAccessPage() {
           </div>
         </SectionCard>
 
-        {status === "pending_payment" && (
+        {expired && (
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-6">
+            <AlertTriangle className="mb-3 h-8 w-8 text-amber-600" />
+            <h2 className="font-display text-lg font-semibold">Accès bloqué — données intactes</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              La période d’un mois est terminée. Aucune donnée (employés, paie, congés…) n’est
+              supprimée. Choisissez un plan, payez avec votre nouveau code, puis un administrateur
+              réactive l’accès.
+            </p>
+            <Button className="mt-4" asChild>
+              <Link to="/subscriptions">Renouveler l’abonnement</Link>
+            </Button>
+          </div>
+        )}
+
+        {!expired && status === "pending_payment" && (
           <div className="rounded-2xl border border-border bg-card p-6">
             <CreditCard className="mb-3 h-8 w-8 text-primary" />
             <h2 className="font-display text-lg font-semibold">Choisissez un abonnement</h2>
@@ -100,7 +128,7 @@ function CompanyAccessPage() {
           </div>
         )}
 
-        {status === "pending_approval" && (
+        {!expired && status === "pending_approval" && (
           <div className="space-y-4">
             {company?.payment_reference ? (
               <SubscriptionPaymentInstructions
@@ -126,7 +154,7 @@ function CompanyAccessPage() {
           </div>
         )}
 
-        {status === "rejected" && (
+        {!expired && status === "rejected" && (
           <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6">
             <XCircle className="mb-3 h-8 w-8 text-destructive" />
             <h2 className="font-display text-lg font-semibold">Demande refusée</h2>
@@ -145,7 +173,7 @@ function CompanyAccessPage() {
           </div>
         )}
 
-        {status === "approved" && (
+        {!expired && status === "approved" && (
           <div className="rounded-2xl border border-border bg-card p-6">
             <ShieldCheck className="mb-3 h-8 w-8 text-primary" />
             <h2 className="font-display text-lg font-semibold">Compte validé</h2>

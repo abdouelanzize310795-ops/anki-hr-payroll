@@ -31,10 +31,14 @@ async function loadProfile(userId: string): Promise<Profile | null> {
 
 async function loadCompanyAccess(companyId: string): Promise<CompanyAccess | null> {
   const supabase = createSupabaseServerClient();
+
+  // Expire overdue periods + J-5 notifications (employer/HR); never deletes data
+  await supabase.rpc("sync_company_subscriptions", { p_company_id: companyId });
+
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, legal_name, is_active, approval_status, subscription_status, subscription_plan, subscription_paid_at, payment_reference, payment_method, rejection_reason",
+      "id, legal_name, is_active, approval_status, subscription_status, subscription_plan, subscription_paid_at, subscription_starts_at, subscription_ends_at, payment_reference, payment_method, rejection_reason",
     )
     .eq("id", companyId)
     .is("deleted_at", null)
@@ -110,10 +114,29 @@ export function isPlatformAdmin(user: AuthUser | null | undefined): boolean {
 
 export function isCompanyApproved(user: AuthUser | null | undefined): boolean {
   if (isPlatformAdmin(user)) return true;
-  return (
-    user?.company?.approval_status === "approved" &&
-    user?.company?.is_active === true
-  );
+  const company = user?.company;
+  if (!company) return false;
+  if (company.approval_status !== "approved" || company.is_active !== true) {
+    return false;
+  }
+  if (company.subscription_status === "expired" || company.subscription_status === "cancelled") {
+    return false;
+  }
+  if (company.subscription_ends_at) {
+    const ends = new Date(company.subscription_ends_at).getTime();
+    if (!Number.isNaN(ends) && ends < Date.now()) return false;
+  }
+  return company.subscription_status === "active";
+}
+
+export function subscriptionDaysRemaining(
+  user: AuthUser | null | undefined,
+): number | null {
+  const endsAt = user?.company?.subscription_ends_at;
+  if (!endsAt || user?.company?.subscription_status !== "active") return null;
+  const ends = new Date(endsAt).getTime();
+  if (Number.isNaN(ends)) return null;
+  return Math.max(0, Math.ceil((ends - Date.now()) / 86_400_000));
 }
 
 export const getAuthSession = createServerFn({ method: "GET" }).handler(async (): Promise<AuthUser | null> => {
