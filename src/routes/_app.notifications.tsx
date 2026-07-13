@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/app/AppShell";
 import { EmptyPlaceholder, SectionCard } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import {
-  Bell, CheckCheck, Wallet, FileSignature, CalendarDays, Flag, Building2, Headphones,
+  Bell, CheckCheck, Wallet, FileSignature, CalendarDays, Flag, Building2, Headphones, CreditCard,
 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -32,6 +32,7 @@ const kindIcon = {
   attendance: Bell,
   task: Flag,
   helpdesk: Headphones,
+  subscription: CreditCard,
 } as const;
 
 const kindTint = {
@@ -41,6 +42,7 @@ const kindTint = {
   attendance: "bg-success/10 text-success",
   task: "bg-destructive/10 text-destructive",
   helpdesk: "bg-primary-soft text-primary",
+  subscription: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
 } as const;
 
 function NotificationsPage() {
@@ -117,7 +119,7 @@ function NotificationsPage() {
       <PageHeader
         badge="Boîte"
         title="Notifications"
-        description="Paie, congés, contrats et tâches prioritaires."
+        description="Paie, congés, contrats, helpdesk et abonnement."
         actions={
           <Button variant="outline" size="sm" onClick={markAllRead}>
             <CheckCheck className="mr-1.5 h-4 w-4" />
@@ -161,10 +163,11 @@ function NotificationsPage() {
         <SectionCard title="À traiter" description={`${visible.filter((v) => v.unread).length} non lu(s)`}>
           <div className="divide-y divide-border">
             {visible.map((n) => {
-              const Icon = kindIcon[n.kind];
+              const Icon = kindIcon[n.kind] ?? Bell;
+              const tint = kindTint[n.kind] ?? "bg-muted text-muted-foreground";
               return (
                 <div key={n.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                  <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${kindTint[n.kind]}`}>
+                  <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tint}`}>
                     <Icon className="h-4 w-4" />
                   </div>
                   <div className="min-w-0 flex-1">

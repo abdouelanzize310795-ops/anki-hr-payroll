@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AnkibaPayLogo } from "@/components/brand/AnkibaPayLogo";
 import { brand } from "@/lib/brand";
-import { isPlatformAdmin, signOut } from "@/lib/auth/auth.functions";
+import { isPlatformAdmin, signOut, subscriptionDaysRemaining } from "@/lib/auth/auth.functions";
 import { getUserRole, NAV_BY_ROLE } from "@/lib/auth/roles";
 import { listEmployees } from "@/modules/employees/employee.functions";
 import { listNotifications } from "@/modules/notifications/notification.functions";
@@ -503,6 +503,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const auth = useAuthUser();
   const admin = isPlatformAdmin(auth);
+  const daysLeft = subscriptionDaysRemaining(auth);
+  const showExpiryBanner =
+    !admin && daysLeft != null && daysLeft <= 5 && pathname !== "/subscriptions";
   const [cmdOpen, setCmdOpen] = useState(false);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -523,6 +526,21 @@ export function AppShell({ children }: { children: ReactNode }) {
           <TopBar onOpenCommand={() => setCmdOpen(true)} />
           <main className="flex-1 p-4 pb-24 md:p-8 md:pb-8">
             <div className="mx-auto w-full max-w-[1400px] animate-in fade-in-50 duration-300">
+              {showExpiryBanner && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm">
+                  <p>
+                    Abonnement bientôt terminé —{" "}
+                    <span className="font-medium">
+                      {daysLeft} jour{daysLeft! > 1 ? "s" : ""} restant
+                      {daysLeft! > 1 ? "s" : ""}
+                    </span>
+                    . Employeur et RH ont été notifiés. Aucune donnée ne sera supprimée.
+                  </p>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link to="/subscriptions">Renouveler</Link>
+                  </Button>
+                </div>
+              )}
               {children}
             </div>
           </main>

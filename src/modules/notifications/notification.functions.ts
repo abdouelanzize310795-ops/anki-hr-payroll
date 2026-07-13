@@ -15,7 +15,7 @@ export type AppNotification = {
   description: string;
   when: string;
   href: string;
-  kind: "payroll" | "leave" | "contract" | "attendance" | "task" | "helpdesk";
+  kind: "payroll" | "leave" | "contract" | "attendance" | "task" | "helpdesk" | "subscription";
   unread: boolean;
 };
 
@@ -38,7 +38,8 @@ function mapKind(kind: string): AppNotification["kind"] {
     kind === "contract" ||
     kind === "attendance" ||
     kind === "task" ||
-    kind === "helpdesk"
+    kind === "helpdesk" ||
+    kind === "subscription"
   ) {
     return kind;
   }

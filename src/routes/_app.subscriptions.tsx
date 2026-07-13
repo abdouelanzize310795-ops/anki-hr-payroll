@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check, Sparkles, CreditCard, Users } from "lucide-react";
 import { listCompanies, markSubscriptionPaid } from "@/modules/companies/company.functions";
 import { listEmployees } from "@/modules/employees/employee.functions";
-import { isCompanyApproved, isPlatformAdmin } from "@/lib/auth/auth.functions";
+import { isCompanyApproved, isPlatformAdmin, subscriptionDaysRemaining } from "@/lib/auth/auth.functions";
 import {
   companyApprovalLabel,
   companySubscriptionLabel,
@@ -71,6 +71,9 @@ function SubscriptionsPage() {
   const navigate = useNavigate();
   const admin = isPlatformAdmin(auth);
   const approved = isCompanyApproved(auth);
+  const expired = auth.company?.subscription_status === "expired";
+  const daysLeft = subscriptionDaysRemaining(auth);
+  const renewWindow = expired || (daysLeft != null && daysLeft <= 5);
   const companyId = auth.profile?.company_id ?? undefined;
 
   const [headcount, setHeadcount] = useState<number | null>(null);
@@ -140,8 +143,11 @@ function SubscriptionsPage() {
       setSelectedPlan(result.data.subscription_plan);
       setSavedMethod(result.data.payment_method ?? paymentMethod);
       setSuccess(
-        result.data.approval_status === "approved"
-          ? "Abonnement mis à jour."
+        result.data.approval_status === "approved" &&
+          result.data.subscription_status === "active"
+          ? renewWindow
+            ? "Code de renouvellement généré. Payez puis un admin prolonge la période."
+            : "Abonnement mis à jour."
           : code
             ? `Plan ${plan} · ${paymentMethodLabel(paymentMethod)}. Code : ${code}.`
             : "Plan sélectionné.",
@@ -150,8 +156,14 @@ function SubscriptionsPage() {
         window.location.href = "/company-access";
         return;
       }
-      if (result.data.approval_status === "approved") {
+      if (
+        result.data.approval_status === "approved" &&
+        result.data.subscription_status === "active" &&
+        !renewWindow
+      ) {
         window.location.href = "/";
+      } else if (result.data.payment_reference) {
+        window.location.reload();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sélection impossible");
@@ -166,11 +178,38 @@ function SubscriptionsPage() {
         badge="Facturation"
         title="Abonnements"
         description={
-          approved
-            ? "Gérez votre plan AnkibaPay."
-            : `Choisissez un plan, payez via M'Vola ou Poketra EXIM BANK, puis activation sous ${SUBSCRIPTION_SUPPORT.activationSlaHours} h.`
+          expired
+            ? "Période terminée — vos données sont conservées. Renouvelez pour débloquer l’accès."
+            : approved
+              ? "Gérez votre plan AnkibaPay (période mensuelle)."
+              : `Choisissez un plan, payez via M'Vola ou Poketra EXIM BANK, puis activation sous ${SUBSCRIPTION_SUPPORT.activationSlaHours} h.`
         }
       />
+
+      {expired && (
+        <div className="mb-6 rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm">
+          <p className="font-medium text-amber-900 dark:text-amber-200">Abonnement expiré — accès bloqué</p>
+          <p className="mt-1 text-muted-foreground">
+            Aucune donnée n’a été supprimée. Choisissez un plan et payez pour demander la
+            réactivation.
+          </p>
+        </div>
+      )}
+
+      {!expired && daysLeft != null && daysLeft <= 5 && (
+        <div className="mb-6 rounded-xl border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm">
+          <p className="font-medium text-amber-900 dark:text-amber-200">
+            Abonnement bientôt terminé ({daysLeft} jour{daysLeft > 1 ? "s" : ""} restant
+            {daysLeft > 1 ? "s" : ""})
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {auth.company?.subscription_ends_at
+              ? `Fin le ${new Date(auth.company.subscription_ends_at).toLocaleDateString("fr-KM")}. `
+              : ""}
+            Renouvelez maintenant pour éviter le blocage. Les données restent intactes.
+          </p>
+        </div>
+      )}
 
       {!admin && auth.company && (
         <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm">
@@ -180,6 +219,11 @@ function SubscriptionsPage() {
           {currentPlan && (
             <Badge variant="outline" className="capitalize">
               Plan {currentPlan}
+            </Badge>
+          )}
+          {auth.company.subscription_ends_at && (
+            <Badge variant="outline">
+              Jusqu’au {new Date(auth.company.subscription_ends_at).toLocaleDateString("fr-KM")}
             </Badge>
           )}
           {auth.company.payment_method && (
@@ -204,7 +248,7 @@ function SubscriptionsPage() {
         </p>
       )}
 
-      {!admin && !approved && (
+      {!admin && (!approved || renewWindow) && (
         <div className="mb-6">
           <SectionCard
             title="Mode de paiement"
@@ -217,7 +261,10 @@ function SubscriptionsPage() {
                   <button
                     key={m.id}
                     type="button"
-                    onClick={() => setPaymentMethod(m.id)}
+                    onClick={() => {
+                      setPaymentMethod(m.id);
+                      setSavedMethod(m.id);
+                    }}
                     className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
                       selected
                         ? "border-primary bg-primary-soft/50 ring-1 ring-primary"
@@ -250,11 +297,11 @@ function SubscriptionsPage() {
         </div>
       )}
 
-      {(paymentCode || auth.company?.payment_reference) && !approved && (
+      {(paymentCode || auth.company?.payment_reference) && (!approved || renewWindow) && (
         <div className="mb-6">
           <SubscriptionPaymentInstructions
             paymentReference={paymentCode ?? auth.company!.payment_reference!}
-            paymentMethod={savedMethod ?? paymentMethod}
+            paymentMethod={paymentMethod}
             planLabel={selectedPlan ?? currentPlan}
           />
         </div>
@@ -288,7 +335,10 @@ function SubscriptionsPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {plans.map((p) => {
-          const isCurrent = currentPlan === p.id && auth.company?.subscription_status === "active";
+          const isCurrent =
+            currentPlan === p.id &&
+            auth.company?.subscription_status === "active" &&
+            !renewWindow;
           return (
             <div
               key={p.id}
@@ -319,7 +369,7 @@ function SubscriptionsPage() {
               </ul>
               <Button
                 className="mt-6 w-full"
-                variant={p.featured ? "default" : "outline"}
+                variant={p.featured || renewWindow ? "default" : "outline"}
                 disabled={admin || !companyId || busyPlan !== null || isCurrent}
                 onClick={() => void handleChoosePlan(p.id)}
               >
@@ -327,7 +377,9 @@ function SubscriptionsPage() {
                   ? "Génération du code…"
                   : isCurrent
                     ? "Plan actuel"
-                    : p.cta}
+                    : renewWindow
+                      ? `Renouveler ${p.name}`
+                      : p.cta}
               </Button>
             </div>
           );
@@ -351,11 +403,13 @@ function SubscriptionsPage() {
                   ? "Actif"
                   : auth.company?.subscription_status === "pending"
                     ? "En attente"
-                    : "À choisir"
+                    : auth.company?.subscription_status === "expired"
+                      ? "Expiré"
+                      : "À choisir"
               }
             />
           </div>
-          {auth.company?.payment_reference && !approved && (
+          {auth.company?.payment_reference && (!approved || renewWindow) && (
             <div className="mt-4">
               <Button variant="outline" onClick={() => void navigate({ to: "/company-access" })}>
                 Voir les instructions de paiement
