@@ -39,8 +39,15 @@ export const createDepartmentSchema = z.object({
   name: z.string().trim().min(2, "Nom obligatoire").max(120),
   code: z.string().trim().max(40).optional().or(z.literal("")),
   branchId: z.string().uuid().optional().nullable(),
+  managerEmployeeId: z.string().uuid().optional().nullable(),
+});
+
+export const setDepartmentManagerSchema = z.object({
+  departmentId: z.string().uuid(),
+  managerEmployeeId: z.string().uuid().nullable(),
 });
 
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
 export type CreateDepartmentInput = z.infer<typeof createDepartmentSchema>;
+export type SetDepartmentManagerInput = z.infer<typeof setDepartmentManagerSchema>;

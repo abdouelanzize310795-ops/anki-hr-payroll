@@ -1,10 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createCompanySchema, updateCompanySchema } from "./schemas";
+import { getPublicEnv } from "@/lib/supabase/env";
+import {
+  createCompanySchema,
+  prepareLogoUploadSchema,
+  updateCompanySchema,
+} from "./schemas";
 import type { Branch, Company, CompanyWithMeta, Country, Currency, Department } from "./types";
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; message: string };
+
+const LOGO_BUCKET = "company-logos";
 
 async function requireUserId(): Promise<string> {
   const supabase = createSupabaseServerClient();
@@ -13,6 +20,15 @@ async function requireUserId(): Promise<string> {
     throw new Error("Authentification requise");
   }
   return data.user.id;
+}
+
+function sanitizeFileName(name: string): string {
+  return name.replace(/[^\w.\-() ]+/g, "_").slice(0, 120);
+}
+
+function publicLogoUrl(path: string): string {
+  const { VITE_SUPABASE_URL } = getPublicEnv();
+  return `${VITE_SUPABASE_URL}/storage/v1/object/public/${LOGO_BUCKET}/${path}`;
 }
 
 export const listCountries = createServerFn({ method: "GET" }).handler(async (): Promise<Country[]> => {
@@ -40,8 +56,19 @@ export const listCurrencies = createServerFn({ method: "GET" }).handler(async ()
 });
 
 export const listCompanies = createServerFn({ method: "GET" }).handler(async (): Promise<CompanyWithMeta[]> => {
-  await requireUserId();
+  const userId = await requireUserId();
   const supabase = createSupabaseServerClient();
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  // Employees must not access company master data (bank, billing, etc.)
+  if (profile?.role === "employee") {
+    return [];
+  }
 
   const { data, error } = await supabase
     .from("companies")
@@ -148,7 +175,20 @@ export const createCompany = createServerFn({ method: "POST" })
       return { ok: false, message: error.message };
     }
 
-    return { ok: true, data: company as Company };
+    let saved = company as Company;
+    const registration = data.registrationNumber?.trim();
+    if (registration) {
+      const { data: updated, error: regError } = await supabase
+        .from("companies")
+        .update({ registration_number: registration })
+        .eq("id", saved.id)
+        .select("*")
+        .single();
+      if (regError) return { ok: false, message: regError.message };
+      if (updated) saved = updated as Company;
+    }
+
+    return { ok: true, data: saved };
   });
 
 export const updateCompany = createServerFn({ method: "POST" })
@@ -162,6 +202,7 @@ export const updateCompany = createServerFn({ method: "POST" })
       trade_name: data.tradeName?.trim() || null,
       sector: data.sector?.trim() || null,
       tax_id: data.taxId?.trim() || null,
+      registration_number: data.registrationNumber?.trim() || null,
       email: data.email?.trim() || null,
       phone: data.phone?.trim() || null,
       address_line1: data.addressLine1?.trim() || null,
@@ -177,7 +218,9 @@ export const updateCompany = createServerFn({ method: "POST" })
     if (data.payrollPeriodicity !== undefined) payload.payroll_periodicity = data.payrollPeriodicity;
     if (data.workDaysPerWeek !== undefined) payload.work_days_per_week = data.workDaysPerWeek;
     if (data.standardHoursPerDay !== undefined) payload.standard_hours_per_day = data.standardHoursPerDay;
+    if (data.overtimeMultiplier !== undefined) payload.overtime_multiplier = data.overtimeMultiplier;
     if (data.isActive !== undefined) payload.is_active = data.isActive;
+    if (data.logoUrl !== undefined) payload.logo_url = data.logoUrl || null;
 
     const { data: company, error } = await supabase
       .from("companies")
@@ -191,6 +234,85 @@ export const updateCompany = createServerFn({ method: "POST" })
       return { ok: false, message: error.message };
     }
 
+    return { ok: true, data: company as Company };
+  });
+
+export const markSubscriptionPaid = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      companyId: z.string().uuid(),
+      plan: z.enum(["starter", "pro", "enterprise"]).default("pro"),
+      paymentMethod: z.enum(["mvola", "poketra"]).default("mvola"),
+    }),
+  )
+  .handler(async ({ data }): Promise<ActionResult<Company>> => {
+    await requireUserId();
+    const supabase = createSupabaseServerClient();
+    const { data: company, error } = await supabase.rpc("mark_company_subscription_paid", {
+      p_company_id: data.companyId,
+      p_plan: data.plan,
+      p_payment_method: data.paymentMethod,
+    });
+    if (error) return { ok: false, message: error.message };
+    return { ok: true, data: company as Company };
+  });
+
+export const prepareCompanyLogoUpload = createServerFn({ method: "POST" })
+  .validator(prepareLogoUploadSchema)
+  .handler(async ({ data }): Promise<
+    ActionResult<{ bucket: string; path: string; token: string; publicUrl: string }>
+  > => {
+    await requireUserId();
+    const supabase = createSupabaseServerClient();
+
+    const ext =
+      data.mimeType === "image/png"
+        ? "png"
+        : data.mimeType === "image/webp"
+          ? "webp"
+          : data.mimeType === "image/svg+xml"
+            ? "svg"
+            : "jpg";
+    const safe = sanitizeFileName(data.fileName.replace(/\.[^.]+$/, "")) || "logo";
+    const path = `${data.companyId}/${safe}-${Date.now()}.${ext}`;
+
+    const { data: signed, error } = await supabase.storage
+      .from(LOGO_BUCKET)
+      .createSignedUploadUrl(path);
+
+    if (error || !signed) {
+      return { ok: false, message: error?.message ?? "Impossible de préparer l’upload du logo" };
+    }
+
+    return {
+      ok: true,
+      data: {
+        bucket: LOGO_BUCKET,
+        path: signed.path,
+        token: signed.token,
+        publicUrl: publicLogoUrl(signed.path),
+      },
+    };
+  });
+
+export const setCompanyLogoUrl = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      companyId: z.string().uuid(),
+      logoUrl: z.string().url(),
+    }),
+  )
+  .handler(async ({ data }): Promise<ActionResult<Company>> => {
+    await requireUserId();
+    const supabase = createSupabaseServerClient();
+    const { data: company, error } = await supabase
+      .from("companies")
+      .update({ logo_url: data.logoUrl })
+      .eq("id", data.companyId)
+      .is("deleted_at", null)
+      .select("*")
+      .single();
+    if (error || !company) return { ok: false, message: error?.message ?? "Mise à jour logo impossible" };
     return { ok: true, data: company as Company };
   });
 
@@ -215,6 +337,8 @@ export const listDepartments = createServerFn({ method: "GET" })
   .handler(async ({ data }): Promise<Department[]> => {
     await requireUserId();
     const supabase = createSupabaseServerClient();
+    await supabase.rpc("sync_expired_manager_coverages");
+
     const { data: rows, error } = await supabase
       .from("departments")
       .select("*")
@@ -222,5 +346,88 @@ export const listDepartments = createServerFn({ method: "GET" })
       .is("deleted_at", null)
       .order("name");
     if (error) throw new Error(error.message);
-    return (rows ?? []) as Department[];
+
+    const deptIds = (rows ?? []).map((d) => d.id);
+
+    const { data: allCov } = deptIds.length
+      ? await supabase
+          .from("manager_leave_coverages")
+          .select(
+            "leave_request_id, department_id, acting_manager_employee_id, start_date, end_date",
+          )
+          .in("department_id", deptIds)
+          .is("deleted_at", null)
+      : {
+          data: [] as Array<{
+            leave_request_id: string;
+            department_id: string;
+            acting_manager_employee_id: string;
+            start_date: string;
+            end_date: string;
+          }>,
+        };
+
+    const leaveIds = [...new Set((allCov ?? []).map((c) => c.leave_request_id))];
+
+    const { data: approvedLeaves } = leaveIds.length
+      ? await supabase
+          .from("leave_requests")
+          .select("id")
+          .in("id", leaveIds)
+          .eq("status", "approved")
+      : { data: [] as Array<{ id: string }> };
+    const approvedSet = new Set((approvedLeaves ?? []).map((l) => l.id));
+
+    const today = new Date().toISOString().slice(0, 10);
+    const activeByDept = new Map<
+      string,
+      { acting_manager_employee_id: string; start_date: string; end_date: string }
+    >();
+    for (const c of allCov ?? []) {
+      if (!approvedSet.has(c.leave_request_id)) continue;
+      if (c.start_date <= today && c.end_date >= today) {
+        activeByDept.set(c.department_id, {
+          acting_manager_employee_id: c.acting_manager_employee_id,
+          start_date: c.start_date,
+          end_date: c.end_date,
+        });
+      }
+    }
+
+    const nameIds = [
+      ...new Set(
+        [
+          ...(rows ?? []).map((d) => d.manager_employee_id),
+          ...[...activeByDept.values()].map((c) => c.acting_manager_employee_id),
+        ].filter(Boolean) as string[],
+      ),
+    ];
+    const { data: managers } = nameIds.length
+      ? await supabase
+          .from("employees")
+          .select("id, first_name, last_name")
+          .in("id", nameIds)
+      : { data: [] as Array<{ id: string; first_name: string; last_name: string }> };
+    const nameMap = new Map(
+      (managers ?? []).map((m) => [m.id, `${m.first_name} ${m.last_name}`]),
+    );
+
+    return ((rows ?? []) as Department[]).map((d) => {
+      const cov = activeByDept.get(d.id);
+      const effectiveId = cov?.acting_manager_employee_id ?? d.manager_employee_id;
+      return {
+        ...d,
+        manager_name: d.manager_employee_id
+          ? nameMap.get(d.manager_employee_id) ?? null
+          : null,
+        effective_manager_employee_id: effectiveId ?? null,
+        effective_manager_name: effectiveId ? nameMap.get(effectiveId) ?? null : null,
+        acting_manager_employee_id: cov?.acting_manager_employee_id ?? null,
+        acting_manager_name: cov?.acting_manager_employee_id
+          ? nameMap.get(cov.acting_manager_employee_id) ?? null
+          : null,
+        coverage_start: cov?.start_date ?? null,
+        coverage_end: cov?.end_date ?? null,
+      };
+    });
   });

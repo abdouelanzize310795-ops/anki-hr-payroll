@@ -3,10 +3,22 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app/AppShell";
 import { EmptyPlaceholder, SectionCard, StatCard, StatusPill } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
-import { ShieldCheck, Users, Building2, Wallet, AlertTriangle } from "lucide-react";
+import {
+  ShieldCheck, Users, Building2, Wallet, AlertTriangle, Check,
+} from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getAdminOverview, type AdminOverview } from "@/modules/admin/admin.functions";
+import {
+  getAdminOverview,
+  type AdminOverview,
+} from "@/modules/admin/admin.functions";
 import { isPlatformAdmin } from "@/lib/auth/auth.functions";
+import {
+  companyApprovalLabel,
+  companySubscriptionLabel,
+  type CompanyApprovalStatus,
+  type CompanySubscriptionStatus,
+} from "@/modules/companies/types";
+import { CompanyApprovalActions } from "@/modules/admin/components/CompanyApprovalActions";
 
 export const Route = createFileRoute("/_app/admin")({
   beforeLoad: ({ context }) => {
@@ -44,26 +56,33 @@ function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setData(await getAdminOverview());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Chargement impossible");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        setData(await getAdminOverview());
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Chargement impossible");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    void load();
   }, [auth.id]);
+
+  const pending = (data?.companies ?? []).filter(
+    (c) =>
+      c.approval_status === "pending_approval" || c.approval_status === "pending_payment",
+  );
 
   return (
     <>
       <PageHeader
         badge="Plateforme"
         title="Super Admin"
-        description="Tenants, utilisateurs et activité live AnkibaPay."
+        description="Validez les entreprises après paiement et suivez tous les tenants AnkibaPay."
         actions={
           <Button variant="outline" size="sm" asChild>
             <Link to="/companies">
@@ -80,12 +99,18 @@ function AdminPage() {
         </p>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
           label="Tenants"
           value={loading ? "…" : String(data?.tenants ?? 0)}
           icon={ShieldCheck}
           accent="primary"
+        />
+        <StatCard
+          label="À valider"
+          value={loading ? "…" : String(data?.pendingApprovals ?? 0)}
+          icon={AlertTriangle}
+          accent={data?.pendingApprovals ? "destructive" : "gold"}
         />
         <StatCard
           label="Utilisateurs actifs"
@@ -107,8 +132,68 @@ function AdminPage() {
         />
       </div>
 
+      <div className="mt-6">
+        <SectionCard
+          title="File de validation"
+          description="Vérifiez le transfert M'Vola (code dans la description) puis activez le compte"
+        >
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Chargement…</p>
+          ) : !pending.length ? (
+            <EmptyPlaceholder
+              title="Aucune demande en attente"
+              description="Les nouvelles entreprises apparaissent ici après paiement."
+              icon={Check}
+            />
+          ) : (
+            <div className="space-y-4">
+              {pending.map((c) => (
+                <div
+                  key={c.id}
+                  className="rounded-xl border border-border bg-muted/20 p-4"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <div className="font-medium">{c.legal_name}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {c.city || "—"} · Plan {c.subscription_plan || "—"} ·{" "}
+                        {c.employee_count} employé(s)
+                      </div>
+                      {c.payment_reference ? (
+                        <div className="mt-2 rounded-lg border border-primary/20 bg-primary-soft/40 px-3 py-2 text-sm">
+                          <span className="text-muted-foreground">Code M&apos;Vola : </span>
+                          <code className="font-mono font-bold text-primary">
+                            {c.payment_reference}
+                          </code>
+                          {c.payment_method ? (
+                            <span className="ml-2 text-xs uppercase text-muted-foreground">
+                              {c.payment_method}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <div className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                          Aucun code généré — l’entreprise n’a pas encore choisi de plan.
+                        </div>
+                      )}
+                    </div>
+                    <CompanyApprovalActions
+                      companyId={c.id}
+                      approvalStatus={c.approval_status}
+                      variant="full"
+                      onDone={() => void load()}
+                      onError={setError}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      </div>
+
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <SectionCard title="Entreprises" description="Tous les tenants">
+        <SectionCard title="Toutes les entreprises" description="Tenants de la plateforme">
           {loading ? (
             <p className="text-sm text-muted-foreground">Chargement…</p>
           ) : !data?.companies.length ? (
@@ -122,7 +207,8 @@ function AdminPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Raison sociale</TableHead>
-                  <TableHead>Ville</TableHead>
+                  <TableHead>Abonnement</TableHead>
+                  <TableHead>Statut</TableHead>
                   <TableHead>Effectif</TableHead>
                 </TableRow>
               </TableHeader>
@@ -137,8 +223,24 @@ function AdminPage() {
                       >
                         {c.legal_name}
                       </Link>
+                      <div className="text-xs text-muted-foreground">{c.city || "—"}</div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{c.city || "—"}</TableCell>
+                    <TableCell>
+                      <div className="text-sm capitalize">{c.subscription_plan || "—"}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {companySubscriptionLabel[
+                          c.subscription_status as CompanySubscriptionStatus
+                        ] ?? c.subscription_status}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <StatusPill
+                        status={
+                          companyApprovalLabel[c.approval_status as CompanyApprovalStatus] ??
+                          c.approval_status
+                        }
+                      />
+                    </TableCell>
                     <TableCell>{c.employee_count}</TableCell>
                   </TableRow>
                 ))}

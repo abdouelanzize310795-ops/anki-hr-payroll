@@ -105,21 +105,30 @@ export const getContract = createServerFn({ method: "GET" })
     if (!row) return null;
 
     const contract = mapContract(row as Contract);
-    const [{ data: emp }, { data: company }, { data: dept }] = await Promise.all([
+    const [{ data: emp }, { data: letterhead }, { data: dept }] = await Promise.all([
       supabase
         .from("employees")
         .select("first_name, last_name, email, phone, city, national_id")
         .eq("id", contract.employee_id)
         .maybeSingle(),
-      supabase
-        .from("companies")
-        .select("legal_name, address_line1, city, region, tax_id")
-        .eq("id", contract.company_id)
-        .maybeSingle(),
+      supabase.rpc("get_company_letterhead", { p_company_id: contract.company_id }),
       contract.department_id
         ? supabase.from("departments").select("name").eq("id", contract.department_id).maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
+
+    const company = (letterhead ?? null) as {
+      legal_name?: string;
+      trade_name?: string | null;
+      address_line1?: string | null;
+      city?: string | null;
+      region?: string | null;
+      tax_id?: string | null;
+      registration_number?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      logo_url?: string | null;
+    } | null;
 
     return {
       ...contract,
@@ -134,6 +143,11 @@ export const getContract = createServerFn({ method: "GET" })
       company_city: company?.city ?? null,
       company_region: company?.region ?? null,
       company_tax_id: company?.tax_id ?? null,
+      company_trade_name: company?.trade_name ?? null,
+      company_registration_number: company?.registration_number ?? null,
+      company_phone: company?.phone ?? null,
+      company_email: company?.email ?? null,
+      company_logo_url: company?.logo_url ?? null,
     };
   });
 
@@ -232,20 +246,74 @@ export const updateContract = createServerFn({ method: "POST" })
     return { ok: true, data: mapContract(row as Contract) };
   });
 
+export type EmployeeAccountProvision = {
+  created: boolean;
+  linked: boolean;
+  email: string;
+  temporaryPassword: string | null;
+  userId: string;
+};
+
 export const transitionContract = createServerFn({ method: "POST" })
   .validator(transitionContractSchema)
-  .handler(async ({ data }): Promise<ActionResult<Contract>> => {
-    await requireUserId();
-    const supabase = createSupabaseServerClient();
-    const { data: row, error } = await supabase.rpc("transition_contract", {
-      p_contract_id: data.id,
-      p_action: data.action,
-      p_signer_name: data.signerName || null,
-      p_reason: data.reason || null,
-    });
-    if (error) return { ok: false, message: error.message };
-    return { ok: true, data: mapContract(row as Contract) };
-  });
+  .handler(
+    async ({
+      data,
+    }): Promise<
+      | {
+          ok: true;
+          data: Contract;
+          account?: EmployeeAccountProvision;
+          accountError?: string;
+        }
+      | { ok: false; message: string }
+    > => {
+      await requireUserId();
+      const supabase = createSupabaseServerClient();
+      const { data: row, error } = await supabase.rpc("transition_contract", {
+        p_contract_id: data.id,
+        p_action: data.action,
+        p_signer_name: data.signerName || null,
+        p_reason: data.reason || null,
+      });
+      if (error) return { ok: false, message: error.message };
+
+      const contract = mapContract(row as Contract);
+      let account: EmployeeAccountProvision | undefined;
+
+      if (data.action === "activate") {
+        const { data: provision, error: provError } = await supabase.rpc(
+          "provision_employee_account",
+          { p_employee_id: contract.employee_id },
+        );
+        if (provError) {
+          return {
+            ok: true,
+            data: contract,
+            accountError: provError.message,
+          };
+        }
+        const p = provision as {
+          created?: boolean;
+          linked?: boolean;
+          email?: string;
+          temporary_password?: string | null;
+          user_id?: string;
+        };
+        if (p?.user_id && p.email) {
+          account = {
+            created: Boolean(p.created),
+            linked: Boolean(p.linked),
+            email: p.email,
+            temporaryPassword: p.temporary_password ?? null,
+            userId: p.user_id,
+          };
+        }
+      }
+
+      return { ok: true, data: contract, account };
+    },
+  );
 
 export const contractStats = createServerFn({ method: "GET" })
   .validator(z.object({ companyId: z.string().uuid().optional() }).optional())

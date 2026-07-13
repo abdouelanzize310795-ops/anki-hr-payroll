@@ -299,6 +299,100 @@ export const softDeleteCandidate = createServerFn({ method: "POST" })
     return { ok: true, data: { id: data.id } };
   });
 
+export const hireCandidateAsEmployee = createServerFn({ method: "POST" })
+  .validator(z.object({ candidateId: z.string().uuid() }))
+  .handler(async ({ data }): Promise<ActionResult<CandidateWithMeta>> => {
+    const userId = await requireUserId();
+    const supabase = createSupabaseServerClient();
+
+    const { data: candidate, error: candError } = await supabase
+      .from("candidates")
+      .select("*")
+      .eq("id", data.candidateId)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (candError || !candidate) {
+      return { ok: false, message: "Candidat introuvable" };
+    }
+    if (candidate.hired_employee_id) {
+      return { ok: false, message: "Ce candidat est déjà embauché" };
+    }
+
+    const { data: job } = await supabase
+      .from("job_openings")
+      .select("id, title, department_id, currency_code")
+      .eq("id", candidate.job_opening_id)
+      .maybeSingle();
+
+    const { error: seatError } = await supabase.rpc("assert_company_can_add_employee", {
+      p_company_id: candidate.company_id,
+    });
+    if (seatError) return { ok: false, message: seatError.message };
+
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: employee, error: empError } = await supabase
+      .from("employees")
+      .insert({
+        company_id: candidate.company_id,
+        department_id: job?.department_id ?? null,
+        first_name: candidate.first_name,
+        last_name: candidate.last_name,
+        email: candidate.email,
+        phone: candidate.phone,
+        job_title: job?.title ?? null,
+        hire_date: today,
+        status: "active",
+        base_salary: candidate.expected_salary != null ? Number(candidate.expected_salary) : 0,
+        currency_code: job?.currency_code || "KMF",
+        created_by: userId,
+      })
+      .select("id")
+      .single();
+
+    if (empError || !employee) {
+      return { ok: false, message: empError?.message ?? "Création employé impossible" };
+    }
+
+    const { data: row, error } = await supabase
+      .from("candidates")
+      .update({
+        stage: "hired",
+        hired_employee_id: employee.id,
+      })
+      .eq("id", candidate.id)
+      .select("*")
+      .single();
+
+    if (error || !row) {
+      return { ok: false, message: error?.message ?? "Mise à jour candidat impossible" };
+    }
+
+    await supabase
+      .from("job_openings")
+      .update({ status: "filled", closed_at: new Date().toISOString() })
+      .eq("id", candidate.job_opening_id)
+      .eq("status", "open");
+
+    await supabase.rpc("write_audit_log", {
+      p_company_id: candidate.company_id,
+      p_action: "recruitment.hire",
+      p_entity_type: "employee",
+      p_entity_id: employee.id,
+      p_summary: `Embauche ${candidate.first_name} ${candidate.last_name}`,
+      p_metadata: { candidate_id: candidate.id },
+    });
+
+    return {
+      ok: true,
+      data: {
+        ...(row as CandidateWithMeta),
+        expected_salary: row.expected_salary != null ? Number(row.expected_salary) : null,
+        job_title: job?.title ?? null,
+      },
+    };
+  });
+
 export const recruitmentStats = createServerFn({ method: "GET" })
   .validator(z.object({ companyId: z.string().uuid().optional() }).optional())
   .handler(async ({ data }) => {

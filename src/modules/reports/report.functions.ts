@@ -93,7 +93,7 @@ export const getReportsData = createServerFn({ method: "GET" })
     let leaveQ = supabase
       .from("leave_requests")
       .select("id", { count: "exact", head: true })
-      .eq("status", "pending")
+      .in("status", ["pending", "pending_manager", "pending_hr"])
       .is("deleted_at", null);
     if (companyId) leaveQ = leaveQ.eq("company_id", companyId);
     const { count: pendingLeave } = await leaveQ;

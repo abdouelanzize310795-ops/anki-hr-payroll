@@ -10,21 +10,31 @@ import {
 import { createCompanySchema, type CreateCompanyInput } from "@/modules/companies/schemas";
 import { listCountries, listCurrencies } from "@/modules/companies/company.functions";
 import type { Country, Currency } from "@/modules/companies/types";
+import { ImagePlus } from "lucide-react";
+
+export type CompanyFormSubmit = {
+  values: CreateCompanyInput;
+  logoFile: File | null;
+};
 
 type CompanyFormProps = {
   defaultValues?: Partial<CreateCompanyInput>;
+  existingLogoUrl?: string | null;
   submitLabel?: string;
-  onSubmit: (values: CreateCompanyInput) => Promise<void>;
+  onSubmit: (payload: CompanyFormSubmit) => Promise<void>;
 };
 
 export function CompanyForm({
   defaultValues,
+  existingLogoUrl,
   submitLabel = "Enregistrer",
   onSubmit,
 }: CompanyFormProps) {
   const [countries, setCountries] = useState<Country[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(existingLogoUrl ?? null);
 
   const form = useForm<CreateCompanyInput>({
     resolver: zodResolver(createCompanySchema),
@@ -33,6 +43,7 @@ export function CompanyForm({
       tradeName: "",
       sector: "",
       taxId: "",
+      registrationNumber: "",
       email: "",
       phone: "",
       addressLine1: "",
@@ -55,10 +66,21 @@ export function CompanyForm({
     })();
   }, []);
 
+  useEffect(() => {
+    setLogoPreview(existingLogoUrl ?? null);
+  }, [existingLogoUrl]);
+
+  useEffect(() => {
+    if (!logoFile) return;
+    const url = URL.createObjectURL(logoFile);
+    setLogoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [logoFile]);
+
   const handleSubmit = form.handleSubmit(async (values) => {
     setServerError(null);
     try {
-      await onSubmit(values);
+      await onSubmit({ values, logoFile });
     } catch (err) {
       setServerError(err instanceof Error ? err.message : "Une erreur est survenue");
     }
@@ -66,6 +88,29 @@ export function CompanyForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4">
+        <Label className="mb-2 block">Identité visuelle</Label>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-xl border border-border bg-card">
+            {logoPreview ? (
+              <img src={logoPreview} alt="Logo" className="h-full w-full object-contain p-1" />
+            ) : (
+              <ImagePlus className="h-6 w-6 text-muted-foreground" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <Input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Logo affiché en en-tête des contrats, bulletins et modèles RH — PNG/JPG/WebP/SVG, 2 Mo max.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="legalName">Raison sociale *</Label>
@@ -85,8 +130,12 @@ export function CompanyForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="taxId">N° d’identification fiscale</Label>
+          <Label htmlFor="taxId">NIF / Identification fiscale</Label>
           <Input id="taxId" {...form.register("taxId")} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="registrationNumber">RCCM / N° registre</Label>
+          <Input id="registrationNumber" {...form.register("registrationNumber")} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">Téléphone</Label>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Users, Wallet, Clock, ListChecks, Plus, ArrowRight, FileSignature,
-  CalendarDays, WalletCards, CheckCircle2, Target,
+  CalendarDays, WalletCards, CheckCircle2, Target, ShieldCheck, Building2, AlertTriangle,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -17,8 +17,15 @@ import {
   type DashboardData,
 } from "@/modules/dashboard/dashboard.functions";
 import { getMyWorkspace, type MyWorkspace } from "@/modules/workspace/workspace.functions";
+import { getAdminOverview, type AdminOverview } from "@/modules/admin/admin.functions";
 import { getUserRole, WORKFLOWS, isEmployerLike } from "@/lib/auth/roles";
+import { isPlatformAdmin } from "@/lib/auth/auth.functions";
 import type { AppRole } from "@/lib/auth/types";
+import {
+  companyApprovalLabel,
+  type CompanyApprovalStatus,
+} from "@/modules/companies/types";
+import { CompanyApprovalActions } from "@/modules/admin/components/CompanyApprovalActions";
 
 export const Route = createFileRoute("/_app/")({
   component: DashboardPage,
@@ -169,7 +176,15 @@ function EmployeeHome({ ws, name }: { ws: MyWorkspace | null; name: string }) {
 
 function leaveStatusFr(s: string) {
   return (
-    { pending: "En attente", approved: "Approuvé", rejected: "Refusé", draft: "Brouillon", cancelled: "Annulé" }[s] ?? s
+    {
+      pending: "En attente manager",
+      pending_manager: "En attente manager",
+      pending_hr: "En attente RH",
+      approved: "Approuvé",
+      rejected: "Refusé",
+      draft: "Brouillon",
+      cancelled: "Annulé",
+    }[s] ?? s
   );
 }
 
@@ -262,35 +277,30 @@ function ManagerHome({ ws, name }: { ws: MyWorkspace | null; name: string }) {
 }
 
 function EmployerHome({
-  data, loading, name, role, error,
+  data, loading, name, error, role = "employer",
 }: {
   data: DashboardData | null;
   loading: boolean;
   name: string;
-  role: AppRole;
   error: string | null;
+  role?: "employer" | "hr";
 }) {
+  const isHr = role === "hr";
   return (
     <>
       <PageHeader
-        badge={role === "platform_admin" ? "Admin plateforme" : "Espace employeur"}
+        badge={isHr ? "Espace RH" : "Espace employeur"}
         title={`Bonjour, ${name}`}
         description={
-          role === "platform_admin"
-            ? "Supervisez les tenants et le cadre légal de paie."
+          isHr
+            ? "Effectif, congés (validation finale), paie et documents de l’entreprise."
             : "Situation de l’effectif et de la paie pour aujourd’hui."
         }
         actions={
           <>
-            {role === "platform_admin" ? (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/admin">Super Admin</Link>
-              </Button>
-            ) : (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/payroll">Paie</Link>
-              </Button>
-            )}
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/leave">{isHr ? "Congés à valider" : "Congés"}</Link>
+            </Button>
             <Button size="sm" asChild>
               <Link to="/employees"><Plus className="mr-1.5 h-4 w-4" />Employé</Link>
             </Button>
@@ -298,7 +308,7 @@ function EmployerHome({
         }
       />
 
-      <WorkflowStrip role={role === "hr" ? "hr" : role === "platform_admin" ? "platform_admin" : "employer"} />
+      <WorkflowStrip role={isHr ? "hr" : "employer"} />
 
       {error && (
         <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -427,12 +437,180 @@ function EmployerHome({
   );
 }
 
+function PlatformAdminHome({
+  data, loading, name, error, onRefresh, onError,
+}: {
+  data: AdminOverview | null;
+  loading: boolean;
+  name: string;
+  error: string | null;
+  onRefresh: () => void;
+  onError: (message: string) => void;
+}) {
+  const pending = (data?.companies ?? []).filter(
+    (c) =>
+      c.approval_status === "pending_approval" || c.approval_status === "pending_payment",
+  );
+
+  return (
+    <>
+      <PageHeader
+        badge="Console plateforme"
+        title={`Bonjour, ${name}`}
+        description="Pilotage SaaS AnkibaPay — validation des entreprises et santé des tenants."
+        actions={
+          <>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/companies">Tenants</Link>
+            </Button>
+            <Button size="sm" asChild>
+              <Link to="/admin">
+                <ShieldCheck className="mr-1.5 h-4 w-4" />
+                Console admin
+              </Link>
+            </Button>
+          </>
+        }
+      />
+
+      <WorkflowStrip role="platform_admin" />
+
+      {error && (
+        <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Entreprises"
+          value={loading ? "…" : String(data?.tenants ?? 0)}
+          icon={Building2}
+          accent="primary"
+        />
+        <StatCard
+          label="À valider"
+          value={loading ? "…" : String(data?.pendingApprovals ?? 0)}
+          icon={AlertTriangle}
+          accent={data?.pendingApprovals ? "destructive" : "gold"}
+        />
+        <StatCard
+          label="Utilisateurs actifs"
+          value={loading ? "…" : String(data?.activeUsers ?? 0)}
+          icon={Users}
+          accent="gold"
+        />
+        <StatCard
+          label="Employés (tous tenants)"
+          value={loading ? "…" : String(data?.employees ?? 0)}
+          icon={Users}
+          accent="success"
+        />
+      </div>
+
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <SectionCard
+          title="File de validation"
+          description="Vérifiez le code M'Vola puis activez"
+          action={
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/admin">Traiter</Link>
+            </Button>
+          }
+        >
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Chargement…</p>
+          ) : pending.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucune entreprise en attente.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {pending.slice(0, 6).map((c) => (
+                <div
+                  key={c.id}
+                  className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center"
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gold/15 text-gold-foreground">
+                      <Building2 className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium">{c.legal_name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Plan {c.subscription_plan || "—"} · {c.city || "—"}
+                        {c.payment_reference ? (
+                          <>
+                            {" · "}
+                            <span className="font-mono text-primary">{c.payment_reference}</span>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                    <StatusPill
+                      status={
+                        companyApprovalLabel[c.approval_status as CompanyApprovalStatus] ??
+                        c.approval_status
+                      }
+                    />
+                  </div>
+                  <CompanyApprovalActions
+                    companyId={c.id}
+                    approvalStatus={c.approval_status}
+                    onDone={onRefresh}
+                    onError={onError}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        <SectionCard
+          title="Tenants récents"
+          description="Dernières entreprises inscrites"
+          action={
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/companies">Tout voir</Link>
+            </Button>
+          }
+        >
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Chargement…</p>
+          ) : !(data?.companies.length) ? (
+            <p className="text-sm text-muted-foreground">Aucun tenant.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {data!.companies.slice(0, 6).map((c) => (
+                <div key={c.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{c.legal_name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {c.employee_count} employé(s) · {c.city || "—"}
+                    </div>
+                  </div>
+                  <StatusPill
+                    status={
+                      companyApprovalLabel[c.approval_status as CompanyApprovalStatus] ??
+                      c.approval_status
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </SectionCard>
+      </div>
+    </>
+  );
+}
+
 function DashboardPage() {
   const { auth } = appRouteApi.useRouteContext();
   const role = getUserRole(auth);
+  const admin = isPlatformAdmin(auth);
   const employerLike = isEmployerLike(role);
 
   const [data, setData] = useState<DashboardData | null>(null);
+  const [adminData, setAdminData] = useState<AdminOverview | null>(null);
   const [ws, setWs] = useState<MyWorkspace | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -442,8 +620,10 @@ function DashboardPage() {
       setLoading(true);
       setError(null);
       try {
-        if (employerLike) {
-          const companyId = role === "platform_admin" ? undefined : auth.profile?.company_id ?? undefined;
+        if (admin) {
+          setAdminData(await getAdminOverview());
+        } else if (employerLike) {
+          const companyId = auth.profile?.company_id ?? undefined;
           setData(await getDashboardData({ data: { companyId } }));
         } else {
           setWs(await getMyWorkspace());
@@ -454,14 +634,38 @@ function DashboardPage() {
         setLoading(false);
       }
     })();
-  }, [employerLike, role, auth.profile?.company_id]);
+  }, [admin, employerLike, auth.profile?.company_id]);
 
   const name =
-    (employerLike ? data?.greetingName : auth.profile?.full_name?.split(/\s+/)[0]) ||
+    (admin
+      ? auth.profile?.full_name?.split(/\s+/)[0]
+      : employerLike
+        ? data?.greetingName
+        : auth.profile?.full_name?.split(/\s+/)[0]) ||
     auth.email.split("@")[0] ||
     "…";
   const displayName = name.charAt(0).toUpperCase() + name.slice(1);
 
+  if (admin) {
+    return (
+      <PlatformAdminHome
+        data={adminData}
+        loading={loading}
+        name={displayName}
+        error={error}
+        onError={setError}
+        onRefresh={() => {
+          void (async () => {
+            try {
+              setAdminData(await getAdminOverview());
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Chargement impossible");
+            }
+          })();
+        }}
+      />
+    );
+  }
   if (role === "employee") {
     return <EmployeeHome ws={ws} name={displayName} />;
   }
@@ -473,8 +677,8 @@ function DashboardPage() {
       data={data}
       loading={loading}
       name={displayName}
-      role={role}
       error={error}
+      role={role === "hr" ? "hr" : "employer"}
     />
   );
 }

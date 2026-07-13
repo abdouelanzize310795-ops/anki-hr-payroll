@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Printer, Send, PenLine, Play, Ban } from "lucide-react";
 import {
   getContract, transitionContract,
+  type EmployeeAccountProvision,
 } from "@/modules/contracts/contract.functions";
 import { ContractPrintView } from "@/modules/contracts/components/ContractPrintView";
 import {
@@ -47,6 +48,7 @@ function ContractDetailPage() {
   const [signerName, setSignerName] = useState("");
   const [cancelReason, setCancelReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [accountCreds, setAccountCreds] = useState<EmployeeAccountProvision | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -98,6 +100,14 @@ function ContractDetailPage() {
         cancel: "Contrat annulé.",
       };
       setMessage(labels[action]);
+      if (action === "activate") {
+        if (result.account) setAccountCreds(result.account);
+        if (result.accountError) {
+          setError(
+            `Contrat activé, mais compte employé non créé : ${result.accountError}`,
+          );
+        }
+      }
       await load();
     } finally {
       setBusy(false);
@@ -151,6 +161,29 @@ function ContractDetailPage() {
 
       {message && (
         <div className="mb-4 rounded-lg border border-reef/30 bg-reef/10 px-3 py-2 text-sm">{message}</div>
+      )}
+      {accountCreds && (
+        <div className="mb-4 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm">
+          <div className="font-medium text-gold-foreground">Compte collaborateur prêt</div>
+          <p className="mt-1 text-muted-foreground">
+            Transmettez ces identifiants à l’employé (mot de passe affiché une seule fois).
+          </p>
+          <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-muted-foreground">E-mail</dt>
+              <dd className="font-mono text-sm">{accountCreds.email}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Mot de passe temporaire</dt>
+              <dd className="font-mono text-sm">
+                {accountCreds.temporaryPassword ??
+                  (accountCreds.created
+                    ? "—"
+                    : "Compte existant — mot de passe inchangé")}
+              </dd>
+            </div>
+          </dl>
+        </div>
       )}
       {error && (
         <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

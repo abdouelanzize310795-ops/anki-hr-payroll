@@ -9,6 +9,7 @@ export const createTaskSchema = z.object({
   assigneeEmployeeId: z.string().uuid().optional().nullable(),
   assigneeName: z.string().trim().max(120).optional().or(z.literal("")),
   dueDate: z.string().optional().or(z.literal("")),
+  estimatedMinutes: z.coerce.number().int().min(0).max(100000).optional().nullable(),
 });
 
 export const updateTaskSchema = z.object({
@@ -20,6 +21,7 @@ export const updateTaskSchema = z.object({
   assigneeEmployeeId: z.string().uuid().optional().nullable(),
   assigneeName: z.string().trim().max(120).optional().nullable(),
   dueDate: z.string().optional().nullable(),
+  estimatedMinutes: z.coerce.number().int().min(0).max(100000).optional().nullable(),
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;

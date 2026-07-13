@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Building2, User, Bell, Lock, Wallet } from "lucide-react";
+import { Building2, User, Bell, Lock, Wallet, UsersRound } from "lucide-react";
 import {
   getCompany,
   listCompanies,
@@ -22,28 +22,43 @@ import { updateMyProfile } from "@/lib/auth/auth.functions";
 import { isPlatformAdmin } from "@/lib/auth/auth.functions";
 import type { CompanyWithMeta, Country, Currency } from "@/modules/companies/types";
 import type { UpdateCompanyInput } from "@/modules/companies/schemas";
+import {
+  HR_ACCESS,
+  listCompanyStaff,
+  provisionStaffAccount,
+  type CompanyStaffMember,
+} from "@/modules/staff/staff.functions";
 
 export const Route = createFileRoute("/_app/settings")({ component: SettingsPage });
 
 const appRouteApi = getRouteApi("/_app");
 
-type Tab = "company" | "payroll" | "account" | "notifications" | "security";
+type Tab = "company" | "payroll" | "team" | "account" | "notifications" | "security";
 
 const nav: Array<{ id: Tab; icon: typeof Building2; t: string; d: string }> = [
   { id: "company", icon: Building2, t: "Entreprise", d: "Profil légal, coordonnées, banque." },
   { id: "payroll", icon: Wallet, t: "Paie", d: "Périodicité et horaires de référence." },
+  { id: "team", icon: UsersRound, t: "Équipe RH", d: "Comptes RH et managers." },
   { id: "account", icon: User, t: "Mon compte", d: "Nom, téléphone, langue." },
   { id: "notifications", icon: Bell, t: "Notifications", d: "Préférences d’alerte (navigateur)." },
   { id: "security", icon: Lock, t: "Sécurité", d: "Session et bonnes pratiques." },
 ];
 
+const employeeNav = nav.filter((s) => s.id === "account" || s.id === "notifications" || s.id === "security");
+const managerNav = nav.filter((s) => s.id !== "team" && s.id !== "payroll");
+
 function SettingsPage() {
   const { auth } = appRouteApi.useRouteContext();
   const admin = isPlatformAdmin(auth);
+  const role = auth.profile?.role;
+  const isEmployee = role === "employee";
+  const isManager = role === "manager";
+  const isEmployer = role === "employer" || admin;
   const canManage =
-    admin || auth.profile?.role === "employer" || auth.profile?.role === "hr";
+    admin || role === "employer" || role === "hr";
 
-  const [tab, setTab] = useState<Tab>("company");
+  const [tab, setTab] = useState<Tab>(isEmployee ? "account" : "company");
+  const visibleNav = isEmployee ? employeeNav : isManager ? managerNav : nav;
   const [companies, setCompanies] = useState<CompanyWithMeta[]>([]);
   const [companyId, setCompanyId] = useState<string>(auth.profile?.company_id ?? "");
   const [company, setCompany] = useState<CompanyWithMeta | null>(null);
@@ -70,15 +85,21 @@ function SettingsPage() {
   const [payrollPeriodicity, setPayrollPeriodicity] = useState<"monthly" | "biweekly" | "weekly">("monthly");
   const [workDays, setWorkDays] = useState(5);
   const [hoursPerDay, setHoursPerDay] = useState(8);
+  const [overtimeMultiplier, setOvertimeMultiplier] = useState(1.5);
 
   // Profile form
   const [fullName, setFullName] = useState(auth.profile?.full_name ?? "");
   const [profilePhone, setProfilePhone] = useState(auth.profile?.phone ?? "");
   const [locale, setLocale] = useState(auth.profile?.locale ?? "fr-KM");
 
-  // Local notification prefs
   const [digestEmail, setDigestEmail] = useState(true);
   const [leaveAlerts, setLeaveAlerts] = useState(true);
+
+  const [staff, setStaff] = useState<CompanyStaffMember[]>([]);
+  const [staffEmail, setStaffEmail] = useState("");
+  const [staffName, setStaffName] = useState("");
+  const [staffRole, setStaffRole] = useState<"hr" | "manager">("hr");
+  const [staffCreds, setStaffCreds] = useState<{ email: string; password: string } | null>(null);
 
   useEffect(() => {
     setDigestEmail(localStorage.getItem("ap_digest") !== "0");
@@ -87,6 +108,7 @@ function SettingsPage() {
 
   useEffect(() => {
     void (async () => {
+      if (isEmployee) return;
       const [cos, curs, comps] = await Promise.all([
         listCountries(),
         listCurrencies(),
@@ -97,10 +119,10 @@ function SettingsPage() {
       setCompanies(comps);
       if (!companyId && comps[0]) setCompanyId(comps[0].id);
     })();
-  }, []);
+  }, [isEmployee]);
 
   useEffect(() => {
-    if (!companyId) {
+    if (isEmployee || !companyId) {
       setCompany(null);
       return;
     }
@@ -124,9 +146,24 @@ function SettingsPage() {
         setPayrollPeriodicity(c.payroll_periodicity);
         setWorkDays(c.work_days_per_week);
         setHoursPerDay(Number(c.standard_hours_per_day));
+        setOvertimeMultiplier(Number(c.overtime_multiplier ?? 1.5));
       }
     })();
-  }, [companyId]);
+  }, [companyId, isEmployee]);
+
+  useEffect(() => {
+    if (!companyId || isEmployee || isManager) {
+      setStaff([]);
+      return;
+    }
+    void (async () => {
+      try {
+        setStaff(await listCompanyStaff({ data: { companyId } }));
+      } catch {
+        setStaff([]);
+      }
+    })();
+  }, [companyId, isEmployee, isManager]);
 
   const flash = (msg: string) => {
     setSuccess(msg);
@@ -157,6 +194,7 @@ function SettingsPage() {
         payrollPeriodicity,
         workDaysPerWeek: workDays,
         standardHoursPerDay: hoursPerDay,
+        overtimeMultiplier,
       };
       const result = await updateCompany({ data: payload });
       if (!result.ok) {
@@ -190,14 +228,60 @@ function SettingsPage() {
     }
   };
 
+  const createStaff = async () => {
+    if (!companyId || !isEmployer) return;
+    setBusy(true);
+    setError(null);
+    setStaffCreds(null);
+    try {
+      const result = await provisionStaffAccount({
+        data: {
+          companyId,
+          email: staffEmail,
+          fullName: staffName,
+          role: staffRole,
+        },
+      });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      if (result.data.temporary_password) {
+        setStaffCreds({
+          email: result.data.email,
+          password: result.data.temporary_password,
+        });
+      }
+      setStaffEmail("");
+      setStaffName("");
+      setStaff(await listCompanyStaff({ data: { companyId } }));
+      flash(
+        result.data.created
+          ? `Compte ${result.data.role === "hr" ? "RH" : "manager"} créé`
+          : `Compte lié en ${result.data.role === "hr" ? "RH" : "manager"}`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const initials = (fullName || auth.email || "?").slice(0, 2).toUpperCase();
+  const roleLabel: Record<string, string> = {
+    employer: "Employeur",
+    hr: "RH",
+    manager: "Manager",
+  };
 
   return (
     <>
       <PageHeader
         badge="Préférences"
         title="Paramètres"
-        description="Entreprise, paie et compte utilisateur."
+        description={
+          isEmployee
+            ? "Votre compte personnel — aucune donnée confidentielle d’entreprise."
+            : "Entreprise, paie et compte utilisateur."
+        }
       />
 
       {(error || success) && (
@@ -214,7 +298,7 @@ function SettingsPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr]">
         <nav className="space-y-1">
-          {nav.map((s) => (
+          {visibleNav.map((s) => (
             <button
               key={s.id}
               type="button"
@@ -393,9 +477,23 @@ function SettingsPage() {
                         disabled={!canManage}
                       />
                     </div>
+                    <div>
+                      <Label>Multiplicateur heures supp.</Label>
+                      <Input
+                        className="mt-1.5"
+                        type="number"
+                        min={0}
+                        max={10}
+                        step={0.1}
+                        value={overtimeMultiplier}
+                        onChange={(e) => setOvertimeMultiplier(Number(e.target.value))}
+                        disabled={!canManage}
+                      />
+                    </div>
                   </div>
                   <p className="mt-3 text-xs text-muted-foreground">
-                    Les cotisations et impôts se configurent dans{" "}
+                    La paie utilise le pointage (heures normales + heures supp. au-delà des heures/jour).
+                    Multiplicateur HS configurable ici (ex. 1,5). Cotisations dans{" "}
                     <Link to="/payroll" className="text-primary underline">Paie → Composants</Link>.
                   </p>
                   {canManage && (
@@ -406,6 +504,121 @@ function SettingsPage() {
                 </>
               )}
             </SectionCard>
+          )}
+
+          {tab === "team" && (
+            <div className="space-y-6">
+              <SectionCard
+                title={HR_ACCESS.title}
+                description={HR_ACCESS.summary}
+              >
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Accès autorisés
+                    </p>
+                    <ul className="space-y-1.5 text-sm text-foreground">
+                      {HR_ACCESS.can.map((item) => (
+                        <li key={item} className="flex gap-2">
+                          <span className="text-success">✓</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Non autorisé
+                    </p>
+                    <ul className="space-y-1.5 text-sm text-muted-foreground">
+                      {HR_ACCESS.cannot.map((item) => (
+                        <li key={item} className="flex gap-2">
+                          <span>—</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                title="Comptes gestionnaires"
+                description="Employeur, RH et managers liés à cette entreprise."
+              >
+                {staff.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aucun compte gestionnaire listé.</p>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {staff.map((m) => (
+                      <li key={m.id} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                        <div>
+                          <div className="text-sm font-medium">{m.full_name || m.email}</div>
+                          <div className="text-xs text-muted-foreground">{m.email}</div>
+                        </div>
+                        <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium">
+                          {roleLabel[m.role] ?? m.role}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </SectionCard>
+
+              {isEmployer && (
+                <SectionCard
+                  title="Créer un compte RH ou manager"
+                  description="Un mot de passe temporaire s’affiche une seule fois."
+                >
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label>Nom complet</Label>
+                      <Input
+                        value={staffName}
+                        onChange={(e) => setStaffName(e.target.value)}
+                        placeholder="Fatima Said"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>E-mail</Label>
+                      <Input
+                        type="email"
+                        value={staffEmail}
+                        onChange={(e) => setStaffEmail(e.target.value)}
+                        placeholder="rh@entreprise.com"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Rôle</Label>
+                      <Select
+                        value={staffRole}
+                        onValueChange={(v) => setStaffRole(v as "hr" | "manager")}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hr">RH</SelectItem>
+                          <SelectItem value="manager">Manager</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button
+                    className="mt-4"
+                    disabled={busy || !staffEmail.trim() || staffName.trim().length < 2}
+                    onClick={() => void createStaff()}
+                  >
+                    {busy ? "Création…" : "Créer le compte"}
+                  </Button>
+                  {staffCreds && (
+                    <div className="mt-4 rounded-lg border border-gold/40 bg-gold/10 p-3 text-sm">
+                      <p className="font-medium">Identifiants à transmettre (une seule fois)</p>
+                      <p className="mt-1 font-mono text-xs">E-mail : {staffCreds.email}</p>
+                      <p className="font-mono text-xs">Mot de passe : {staffCreds.password}</p>
+                    </div>
+                  )}
+                </SectionCard>
+              )}
+            </div>
           )}
 
           {tab === "account" && (

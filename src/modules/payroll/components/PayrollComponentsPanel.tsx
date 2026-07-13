@@ -30,7 +30,9 @@ export function PayrollComponentsPanel({ companyId, components, onChanged }: Pro
   const [newCode, setNewCode] = useState("");
   const [newName, setNewName] = useState("");
   const [newKind, setNewKind] = useState<"earning" | "deduction" | "employer_contribution">("earning");
-  const [newMethod, setNewMethod] = useState<"fixed" | "percent_of_base" | "percent_of_gross">("fixed");
+  const [newMethod, setNewMethod] = useState<
+    "fixed" | "percent_of_base" | "percent_of_gross" | "worked_hours" | "overtime_hours"
+  >("fixed");
   const [newRate, setNewRate] = useState("0");
 
   useEffect(() => {
@@ -63,6 +65,27 @@ export function PayrollComponentsPanel({ companyId, components, onChanged }: Pro
     try {
       const result = await updatePayrollComponent({
         data: { id: c.id, isActive: !c.is_active },
+      });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      await onChanged();
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const toggleFlag = async (
+    c: PayrollComponent,
+    field: "subjectToIgr" | "subjectToRetirement",
+    value: boolean,
+  ) => {
+    setSavingId(c.id);
+    setError(null);
+    try {
+      const result = await updatePayrollComponent({
+        data: { id: c.id, [field]: value },
       });
       if (!result.ok) {
         setError(result.message);
@@ -121,6 +144,28 @@ export function PayrollComponentsPanel({ companyId, components, onChanged }: Pro
               <div className="text-xs text-muted-foreground">
                 {c.code} · {componentKindLabel[c.kind]} · {calcMethodLabel[c.calc_method as PayrollCalcMethod]}
               </div>
+              {c.kind === "earning" && (
+                <div className="mt-2 flex flex-wrap gap-4 text-xs">
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={c.subject_to_igr}
+                      disabled={savingId === c.id}
+                      onChange={(e) => void toggleFlag(c, "subjectToIgr", e.target.checked)}
+                    />
+                    Soumis IGR
+                  </label>
+                  <label className="flex items-center gap-1.5">
+                    <input
+                      type="checkbox"
+                      checked={c.subject_to_retirement}
+                      disabled={savingId === c.id}
+                      onChange={(e) => void toggleFlag(c, "subjectToRetirement", e.target.checked)}
+                    />
+                    Soumis retraite
+                  </label>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Input
@@ -132,8 +177,14 @@ export function PayrollComponentsPanel({ companyId, components, onChanged }: Pro
                 value={draftRates[c.id] ?? ""}
                 onChange={(e) => setDraftRates((d) => ({ ...d, [c.id]: e.target.value }))}
               />
-              <span className="w-8 text-xs text-muted-foreground">
-                {c.calc_method.startsWith("percent") ? "%" : "KMF"}
+              <span className="w-10 text-xs text-muted-foreground">
+                {c.calc_method.startsWith("percent")
+                  ? "%"
+                  : c.calc_method === "overtime_hours"
+                    ? "×"
+                    : c.calc_method === "worked_hours"
+                      ? "KMF/h"
+                      : "KMF"}
               </span>
               {c.calc_method !== "base_salary" && (
                 <Button
@@ -185,6 +236,8 @@ export function PayrollComponentsPanel({ companyId, components, onChanged }: Pro
                 <SelectItem value="fixed">Montant fixe</SelectItem>
                 <SelectItem value="percent_of_base">% du base</SelectItem>
                 <SelectItem value="percent_of_gross">% du brut</SelectItem>
+                <SelectItem value="worked_hours">Heures travaillées</SelectItem>
+                <SelectItem value="overtime_hours">Heures supplémentaires</SelectItem>
               </SelectContent>
             </Select>
           </div>

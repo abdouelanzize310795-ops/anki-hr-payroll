@@ -10,24 +10,40 @@ import { isPlatformAdmin } from "@/lib/auth/auth.functions";
 type Msg = { role: "user" | "ai"; text: string };
 
 const suggestions = [
+  "Comment créer un ticket ?",
+  "Comment pointer ?",
+  "Comment demander un congé ?",
   "Effectif actif",
-  "Résumé de la paie",
-  "Qui est en congé ?",
-  "État des contrats",
+  "Tickets helpdesk ouverts",
+];
+
+const employeeSuggestions = [
+  "Comment créer un ticket ?",
+  "Comment pointer ?",
+  "Comment demander un congé ?",
+  "Mon pointage",
+  "Mes congés",
 ];
 
 const appRouteApi = getRouteApi("/_app");
 
 function renderText(text: string) {
-  return text.split("**").map((part, idx) =>
-    idx % 2 === 1 ? <strong key={idx}>{part}</strong> : <span key={idx}>{part}</span>,
-  );
+  return text.split("\n").map((line, lineIdx, lines) => (
+    <span key={lineIdx}>
+      {line.split("**").map((part, idx) =>
+        idx % 2 === 1 ? <strong key={idx}>{part}</strong> : <span key={idx}>{part}</span>,
+      )}
+      {lineIdx < lines.length - 1 ? <br /> : null}
+    </span>
+  ));
 }
 
 export function AiAssistant() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { auth } = appRouteApi.useRouteContext();
   const admin = isPlatformAdmin(auth);
+  const role = auth.profile?.role ?? "employee";
+  const isEmployee = role === "employee";
   const companyId = admin ? undefined : auth.profile?.company_id ?? undefined;
   const firstName =
     auth.profile?.full_name?.trim().split(/\s+/)[0] ??
@@ -37,10 +53,13 @@ export function AiAssistant() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [chips, setChips] = useState(isEmployee ? employeeSuggestions : suggestions);
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       role: "ai",
-      text: `Bonjour ${firstName}. Je réponds à partir de vos données AnkibaPay (effectif, congés, paie, contrats). Les actions sensibles restent à votre validation.`,
+      text: isEmployee
+        ? `Bonjour ${firstName}. Demandez « Comment créer un ticket ? » ou consultez mon pointage, mes congés, mes tickets.`
+        : `Bonjour ${firstName}. Guides (« Comment créer un ticket ? ») + données live (effectif, paie, helpdesk). Les actions sensibles restent à votre validation.`,
     },
   ]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -58,6 +77,7 @@ export function AiAssistant() {
     try {
       const res = await askAnkibaAi({ data: { question: q, companyId } });
       setMsgs((m) => [...m, { role: "ai", text: res.answer }]);
+      if (res.hints?.length) setChips(res.hints);
     } catch (err) {
       setMsgs((m) => [
         ...m,
@@ -94,7 +114,7 @@ export function AiAssistant() {
               <div>
                 <div className="font-display text-sm font-semibold">Assistant AnkibaPay</div>
                 <div className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                  <span className="h-1.5 w-1.5 rounded-full bg-success" /> Données live
+                  <span className="h-1.5 w-1.5 rounded-full bg-success" /> Guides + données
                 </div>
               </div>
             </div>
@@ -122,9 +142,9 @@ export function AiAssistant() {
                 Analyse des données…
               </div>
             )}
-            {msgs.length < 3 && !busy && (
+            {msgs.length >= 1 && !busy && (
               <div className="flex flex-wrap gap-2 pt-1">
-                {suggestions.map((s) => (
+                {chips.map((s) => (
                   <button
                     key={s}
                     type="button"

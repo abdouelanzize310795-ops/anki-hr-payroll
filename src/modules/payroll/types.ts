@@ -1,5 +1,12 @@
 export type PayrollComponentKind = "earning" | "deduction" | "employer_contribution";
-export type PayrollCalcMethod = "base_salary" | "fixed" | "percent_of_base" | "percent_of_gross";
+export type PayrollCalcMethod =
+  | "base_salary"
+  | "fixed"
+  | "percent_of_base"
+  | "percent_of_gross"
+  | "worked_hours"
+  | "overtime_hours"
+  | "igr_progressive";
 export type PayrollRunStatus = "draft" | "calculated" | "approved" | "paid" | "cancelled";
 
 export type PayrollComponent = {
@@ -11,6 +18,8 @@ export type PayrollComponent = {
   calc_method: PayrollCalcMethod;
   rate_value: number;
   is_taxable: boolean;
+  subject_to_igr: boolean;
+  subject_to_retirement: boolean;
   is_active: boolean;
   is_system: boolean;
   sort_order: number;
@@ -66,6 +75,9 @@ export type Payslip = {
   net_amount: number;
   employer_contribution_amount: number;
   status: string;
+  worked_hours?: number | null;
+  overtime_hours?: number | null;
+  expected_hours?: number | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -92,7 +104,13 @@ export type PayslipDetail = Payslip & {
   company_name?: string | null;
   company_address?: string | null;
   company_city?: string | null;
+  company_region?: string | null;
   company_tax_id?: string | null;
+  company_trade_name?: string | null;
+  company_registration_number?: string | null;
+  company_phone?: string | null;
+  company_email?: string | null;
+  company_logo_url?: string | null;
   period_label?: string | null;
   period_start?: string | null;
   period_end?: string | null;
@@ -121,10 +139,13 @@ export const componentKindLabel: Record<PayrollComponentKind, string> = {
 };
 
 export const calcMethodLabel: Record<PayrollCalcMethod, string> = {
-  base_salary: "Salaire de base employé",
+  base_salary: "Salaire de base (proratisé pointage)",
   fixed: "Montant fixe",
   percent_of_base: "% du salaire de base",
   percent_of_gross: "% du brut",
+  worked_hours: "Heures travaillées × tarif",
+  overtime_hours: "Heures supp. × tarif × multiplicateur",
+  igr_progressive: "I.G.R. progressif (barème)",
 };
 
 export const MONTHS_FR = [

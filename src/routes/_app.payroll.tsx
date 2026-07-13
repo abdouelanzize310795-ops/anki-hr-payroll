@@ -1,4 +1,4 @@
-import { createFileRoute, Link, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute, Link, getRouteApi, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app/AppShell";
 import { EmptyPlaceholder, Money, SectionCard, StatCard, StatusPill } from "@/components/app/primitives";
@@ -21,6 +21,7 @@ import {
 import { listCompanies } from "@/modules/companies/company.functions";
 import {
   createPayrollRun,
+  listMyPayslips,
   listPayrollComponents,
   listPayrollRuns,
   payrollStats,
@@ -36,7 +37,16 @@ import {
 import type { CompanyWithMeta } from "@/modules/companies/types";
 import { isPlatformAdmin } from "@/lib/auth/auth.functions";
 
-export const Route = createFileRoute("/_app/payroll")({ component: PayrollPage });
+export const Route = createFileRoute("/_app/payroll")({ component: PayrollLayout });
+
+function PayrollLayout() {
+  const showingDetail = useRouterState({
+    select: (s) =>
+      s.location.pathname.startsWith("/payroll/") && s.location.pathname !== "/payroll",
+  });
+  if (showingDetail) return <Outlet />;
+  return <PayrollPage />;
+}
 
 const appRouteApi = getRouteApi("/_app");
 
@@ -47,6 +57,100 @@ function formatKmfCompact(value: number): string {
 }
 
 function PayrollPage() {
+  const { auth } = appRouteApi.useRouteContext();
+  if (auth.profile?.role === "employee") {
+    return <EmployeePayrollHome />;
+  }
+  return <EmployerPayrollHome />;
+}
+
+function EmployeePayrollHome() {
+  const [rows, setRows] = useState<
+    Array<{
+      id: string;
+      payslip_number: string | null;
+      net_amount: number;
+      gross_amount: number;
+      currency_code: string;
+      period_label: string;
+    }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        setRows(await listMyPayslips());
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Chargement impossible");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  return (
+    <>
+      <PageHeader
+        badge="Mes bulletins"
+        title="Ma paie"
+        description="Consultez uniquement vos bulletins de salaire."
+      />
+      {error && (
+        <p className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      <SectionCard title="Bulletins" description={loading ? "Chargement…" : `${rows.length} bulletin(s)`}>
+        {!loading && rows.length === 0 ? (
+          <EmptyPlaceholder
+            title="Aucun bulletin"
+            description="Vos bulletins apparaîtront ici après chaque cycle de paie."
+            icon={FileText}
+          />
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Période</TableHead>
+                <TableHead>N°</TableHead>
+                <TableHead>Brut</TableHead>
+                <TableHead>Net</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-medium">{r.period_label}</TableCell>
+                  <TableCell className="font-mono text-xs">{r.payslip_number || "—"}</TableCell>
+                  <TableCell>
+                    <Money value={r.gross_amount} currency={r.currency_code} />
+                  </TableCell>
+                  <TableCell>
+                    <Money value={r.net_amount} currency={r.currency_code} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="outline" size="sm" asChild>
+                      <Link to="/payroll/payslip/$payslipId" params={{ payslipId: r.id }}>
+                        Ouvrir
+                      </Link>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </SectionCard>
+    </>
+  );
+}
+
+function EmployerPayrollHome() {
   const { auth } = appRouteApi.useRouteContext();
   const profileCompanyId = auth.profile?.company_id ?? null;
   const admin = isPlatformAdmin(auth);

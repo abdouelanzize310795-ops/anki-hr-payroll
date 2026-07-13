@@ -4,9 +4,10 @@ import { getRouteApi } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/AppShell";
 import { SectionCard, StatusPill, Money } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, KeyRound } from "lucide-react";
 import {
-  getEmployee, softDeleteEmployee, updateEmployee,
+  getEmployee, softDeleteEmployee, updateEmployee, provisionEmployeeAccount,
+  type EmployeeAccountProvision,
 } from "@/modules/employees/employee.functions";
 import { EmployeeForm } from "@/modules/employees/components/EmployeeForm";
 import type { EmployeeWithRelations } from "@/modules/employees/types";
@@ -26,6 +27,8 @@ function EmployeeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [busyAccount, setBusyAccount] = useState(false);
+  const [accountCreds, setAccountCreds] = useState<EmployeeAccountProvision | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -69,6 +72,23 @@ function EmployeeDetailPage() {
       return;
     }
     window.location.assign("/employees");
+  };
+
+  const handleProvisionAccount = async () => {
+    if (!employee) return;
+    setBusyAccount(true);
+    setError(null);
+    try {
+      const result = await provisionEmployeeAccount({ data: { employeeId: employee.id } });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      setAccountCreds(result.data);
+      await load();
+    } finally {
+      setBusyAccount(false);
+    }
   };
 
   if (loading) {
@@ -118,6 +138,16 @@ function EmployeeDetailPage() {
             <Button variant="outline" size="sm" asChild>
               <Link to="/employees"><ArrowLeft className="mr-1.5 h-4 w-4" />Liste</Link>
             </Button>
+            {!employee.user_id && (
+              <Button
+                size="sm"
+                disabled={busyAccount || !employee.email}
+                onClick={() => void handleProvisionAccount()}
+              >
+                <KeyRound className="mr-1.5 h-4 w-4" />
+                Créer compte d’accès
+              </Button>
+            )}
             <Button variant="destructive" size="sm" onClick={() => void handleArchive()}>
               Archiver
             </Button>
@@ -142,6 +172,35 @@ function EmployeeDetailPage() {
           <div className="font-mono text-xs text-muted-foreground">{employee.bank_account || ""}</div>
         </div>
       </div>
+
+      {accountCreds && (
+        <div className="mb-4 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm">
+          <div className="font-medium">Compte collaborateur</div>
+          <p className="mt-1 text-muted-foreground">
+            {accountCreds.created
+              ? "Nouveau compte créé — communiquez le mot de passe temporaire."
+              : "Compte lié à l’e-mail existant."}
+          </p>
+          <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-muted-foreground">E-mail</dt>
+              <dd className="font-mono">{accountCreds.email}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Mot de passe temporaire</dt>
+              <dd className="font-mono">
+                {accountCreds.temporaryPassword ?? "Compte existant — inchangé"}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      )}
+
+      {employee.user_id && !accountCreds && (
+        <div className="mb-4 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          Compte d’accès déjà lié ({employee.email || "e-mail fiche"}).
+        </div>
+      )}
 
       {saved && (
         <div className="mb-4 rounded-lg border border-reef/30 bg-reef/10 px-3 py-2 text-sm">

@@ -7,7 +7,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Calculator, TrendingUp, TrendingDown, Wallet, Building2, Landmark,
+  Calculator, TrendingUp, TrendingDown, Wallet, Building2, Landmark, Download,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -63,6 +63,32 @@ function AccountingPage() {
     })();
   }, [companyFilter, lockedCompanyId]);
 
+  const downloadJournalCsv = () => {
+    const entries = data?.entries ?? [];
+    if (!entries.length) return;
+    const escape = (v: string | number) => {
+      const s = String(v ?? "");
+      if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    const header = ["date", "description", "category", "amount", "currency", "status"];
+    const lines = [
+      header.join(","),
+      ...entries.map((e) =>
+        [e.date, e.description, e.category, e.amount, e.currency, e.status]
+          .map(escape)
+          .join(","),
+      ),
+    ];
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `journal-comptable-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <PageHeader
@@ -70,12 +96,23 @@ function AccountingPage() {
         title="Comptabilité"
         description="Charges de personnel et virements issus de la paie AnkibaPay."
         actions={
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/payroll">
-              <Calculator className="mr-1.5 h-4 w-4" />
-              Cycles de paie
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!data?.entries.length}
+              onClick={downloadJournalCsv}
+            >
+              <Download className="mr-1.5 h-4 w-4" />
+              Export CSV
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/payroll">
+                <Calculator className="mr-1.5 h-4 w-4" />
+                Cycles de paie
+              </Link>
+            </Button>
+          </div>
         }
       />
 

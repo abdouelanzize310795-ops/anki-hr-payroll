@@ -11,6 +11,7 @@ export type HrTask = {
   assignee_employee_id: string | null;
   assignee_name: string | null;
   due_date: string | null;
+  estimated_minutes: number | null;
   completed_at: string | null;
   created_by: string | null;
   created_at: string;

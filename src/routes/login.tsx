@@ -21,6 +21,9 @@ export const Route = createFileRoute("/login")({
   beforeLoad: async () => {
     const session = await getAuthSession();
     if (session) {
+      if (session.profile?.must_change_password) {
+        throw redirect({ to: "/change-password" });
+      }
       throw redirect({ to: "/" });
     }
   },
@@ -40,6 +43,11 @@ function LoginPage() {
     const result = await signInWithPassword({ data: values });
     if (!result.ok) {
       setServerError(result.message);
+      return;
+    }
+    const session = await getAuthSession();
+    if (session?.profile?.must_change_password) {
+      await navigate({ to: "/change-password" });
       return;
     }
     await navigate({ to: "/" });

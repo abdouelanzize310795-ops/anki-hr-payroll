@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppTransfersRouteImport } from './routes/_app.transfers'
@@ -25,9 +26,11 @@ import { Route as AppPerformanceRouteImport } from './routes/_app.performance'
 import { Route as AppPayrollRouteImport } from './routes/_app.payroll'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
 import { Route as AppLeaveRouteImport } from './routes/_app.leave'
+import { Route as AppHelpdeskRouteImport } from './routes/_app.helpdesk'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppContractsRouteImport } from './routes/_app.contracts'
+import { Route as AppCompanyAccessRouteImport } from './routes/_app.company-access'
 import { Route as AppCompaniesRouteImport } from './routes/_app.companies'
 import { Route as AppAttendanceRouteImport } from './routes/_app.attendance'
 import { Route as AppAssetsRouteImport } from './routes/_app.assets'
@@ -54,6 +57,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangePasswordRoute = ChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -120,6 +128,11 @@ const AppLeaveRoute = AppLeaveRouteImport.update({
   path: '/leave',
   getParentRoute: () => AppRoute,
 } as any)
+const AppHelpdeskRoute = AppHelpdeskRouteImport.update({
+  id: '/helpdesk',
+  path: '/helpdesk',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppEmployeesRoute = AppEmployeesRouteImport.update({
   id: '/employees',
   path: '/employees',
@@ -133,6 +146,11 @@ const AppDocumentsRoute = AppDocumentsRouteImport.update({
 const AppContractsRoute = AppContractsRouteImport.update({
   id: '/contracts',
   path: '/contracts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCompanyAccessRoute = AppCompanyAccessRouteImport.update({
+  id: '/company-access',
+  path: '/company-access',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCompaniesRoute = AppCompaniesRouteImport.update({
@@ -199,6 +217,7 @@ const AppPayrollPayslipPayslipIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
@@ -208,9 +227,11 @@ export interface FileRoutesByFullPath {
   '/assets': typeof AppAssetsRoute
   '/attendance': typeof AppAttendanceRoute
   '/companies': typeof AppCompaniesRouteWithChildren
+  '/company-access': typeof AppCompanyAccessRoute
   '/contracts': typeof AppContractsRouteWithChildren
   '/documents': typeof AppDocumentsRoute
   '/employees': typeof AppEmployeesRouteWithChildren
+  '/helpdesk': typeof AppHelpdeskRoute
   '/leave': typeof AppLeaveRoute
   '/notifications': typeof AppNotificationsRoute
   '/payroll': typeof AppPayrollRouteWithChildren
@@ -230,6 +251,7 @@ export interface FileRoutesByFullPath {
   '/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
 }
 export interface FileRoutesByTo {
+  '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
@@ -239,9 +261,11 @@ export interface FileRoutesByTo {
   '/assets': typeof AppAssetsRoute
   '/attendance': typeof AppAttendanceRoute
   '/companies': typeof AppCompaniesRouteWithChildren
+  '/company-access': typeof AppCompanyAccessRoute
   '/contracts': typeof AppContractsRouteWithChildren
   '/documents': typeof AppDocumentsRoute
   '/employees': typeof AppEmployeesRouteWithChildren
+  '/helpdesk': typeof AppHelpdeskRoute
   '/leave': typeof AppLeaveRoute
   '/notifications': typeof AppNotificationsRoute
   '/payroll': typeof AppPayrollRouteWithChildren
@@ -264,6 +288,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
@@ -273,9 +298,11 @@ export interface FileRoutesById {
   '/_app/assets': typeof AppAssetsRoute
   '/_app/attendance': typeof AppAttendanceRoute
   '/_app/companies': typeof AppCompaniesRouteWithChildren
+  '/_app/company-access': typeof AppCompanyAccessRoute
   '/_app/contracts': typeof AppContractsRouteWithChildren
   '/_app/documents': typeof AppDocumentsRoute
   '/_app/employees': typeof AppEmployeesRouteWithChildren
+  '/_app/helpdesk': typeof AppHelpdeskRoute
   '/_app/leave': typeof AppLeaveRoute
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/payroll': typeof AppPayrollRouteWithChildren
@@ -299,6 +326,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/change-password'
     | '/login'
     | '/onboarding'
     | '/signup'
@@ -308,9 +336,11 @@ export interface FileRouteTypes {
     | '/assets'
     | '/attendance'
     | '/companies'
+    | '/company-access'
     | '/contracts'
     | '/documents'
     | '/employees'
+    | '/helpdesk'
     | '/leave'
     | '/notifications'
     | '/payroll'
@@ -330,6 +360,7 @@ export interface FileRouteTypes {
     | '/payroll/payslip/$payslipId'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/change-password'
     | '/login'
     | '/onboarding'
     | '/signup'
@@ -339,9 +370,11 @@ export interface FileRouteTypes {
     | '/assets'
     | '/attendance'
     | '/companies'
+    | '/company-access'
     | '/contracts'
     | '/documents'
     | '/employees'
+    | '/helpdesk'
     | '/leave'
     | '/notifications'
     | '/payroll'
@@ -363,6 +396,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/change-password'
     | '/login'
     | '/onboarding'
     | '/signup'
@@ -372,9 +406,11 @@ export interface FileRouteTypes {
     | '/_app/assets'
     | '/_app/attendance'
     | '/_app/companies'
+    | '/_app/company-access'
     | '/_app/contracts'
     | '/_app/documents'
     | '/_app/employees'
+    | '/_app/helpdesk'
     | '/_app/leave'
     | '/_app/notifications'
     | '/_app/payroll'
@@ -397,6 +433,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  ChangePasswordRoute: typeof ChangePasswordRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   SignupRoute: typeof SignupRoute
@@ -423,6 +460,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/change-password': {
+      id: '/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof ChangePasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -516,6 +560,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppLeaveRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/helpdesk': {
+      id: '/_app/helpdesk'
+      path: '/helpdesk'
+      fullPath: '/helpdesk'
+      preLoaderRoute: typeof AppHelpdeskRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/employees': {
       id: '/_app/employees'
       path: '/employees'
@@ -535,6 +586,13 @@ declare module '@tanstack/react-router' {
       path: '/contracts'
       fullPath: '/contracts'
       preLoaderRoute: typeof AppContractsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/company-access': {
+      id: '/_app/company-access'
+      path: '/company-access'
+      fullPath: '/company-access'
+      preLoaderRoute: typeof AppCompanyAccessRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/companies': {
@@ -693,9 +751,11 @@ interface AppRouteChildren {
   AppAssetsRoute: typeof AppAssetsRoute
   AppAttendanceRoute: typeof AppAttendanceRoute
   AppCompaniesRoute: typeof AppCompaniesRouteWithChildren
+  AppCompanyAccessRoute: typeof AppCompanyAccessRoute
   AppContractsRoute: typeof AppContractsRouteWithChildren
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppEmployeesRoute: typeof AppEmployeesRouteWithChildren
+  AppHelpdeskRoute: typeof AppHelpdeskRoute
   AppLeaveRoute: typeof AppLeaveRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppPayrollRoute: typeof AppPayrollRouteWithChildren
@@ -717,9 +777,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppAssetsRoute: AppAssetsRoute,
   AppAttendanceRoute: AppAttendanceRoute,
   AppCompaniesRoute: AppCompaniesRouteWithChildren,
+  AppCompanyAccessRoute: AppCompanyAccessRoute,
   AppContractsRoute: AppContractsRouteWithChildren,
   AppDocumentsRoute: AppDocumentsRoute,
   AppEmployeesRoute: AppEmployeesRouteWithChildren,
+  AppHelpdeskRoute: AppHelpdeskRoute,
   AppLeaveRoute: AppLeaveRoute,
   AppNotificationsRoute: AppNotificationsRoute,
   AppPayrollRoute: AppPayrollRouteWithChildren,
@@ -738,6 +800,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  ChangePasswordRoute: ChangePasswordRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   SignupRoute: SignupRoute,

@@ -15,4 +15,16 @@ export const documentIdSchema = z.object({
   id: z.string().uuid(),
 });
 
+export const createFromTemplateSchema = z.object({
+  companyId: z.string().uuid("Entreprise requise"),
+  templateId: z.string().trim().min(2).max(80),
+  employeeId: z.string().uuid().optional().nullable(),
+  /** Optional overrides */
+  startDate: z.string().trim().max(40).optional().or(z.literal("")),
+  endDate: z.string().trim().max(40).optional().or(z.literal("")),
+  salary: z.string().trim().max(40).optional().or(z.literal("")),
+  jobTitle: z.string().trim().max(120).optional().or(z.literal("")),
+});
+
 export type PrepareUploadInput = z.infer<typeof prepareUploadSchema>;
+export type CreateFromTemplateInput = z.infer<typeof createFromTemplateSchema>;

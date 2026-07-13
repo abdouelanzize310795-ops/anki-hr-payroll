@@ -21,6 +21,7 @@ import { listCompanies } from "@/modules/companies/company.functions";
 import {
   createCandidate,
   createJobOpening,
+  hireCandidateAsEmployee,
   listCandidates,
   listJobOpenings,
   moveCandidateStage,
@@ -232,6 +233,12 @@ function RecruitmentPage() {
   };
 
   const onMove = async (id: string, stage: CandidateStage) => {
+    if (stage === "hired") {
+      const res = await hireCandidateAsEmployee({ data: { candidateId: id } });
+      if (!res.ok) setError(res.message);
+      else await load();
+      return;
+    }
     const res = await moveCandidateStage({ data: { id, stage } });
     if (!res.ok) setError(res.message);
     else await load();

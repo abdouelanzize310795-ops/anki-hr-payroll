@@ -47,8 +47,12 @@ export const createTask = createServerFn({ method: "POST" })
         .select("first_name, last_name, company_id")
         .eq("id", data.assigneeEmployeeId)
         .maybeSingle();
+      // RLS scopes employees: managers only see their department staff
       if (!emp || emp.company_id !== data.companyId) {
-        return { ok: false, message: "Assigné introuvable" };
+        return {
+          ok: false,
+          message: "Assigné introuvable ou hors de votre périmètre (département)",
+        };
       }
       assigneeName = `${emp.first_name} ${emp.last_name}`;
     }
@@ -64,6 +68,10 @@ export const createTask = createServerFn({ method: "POST" })
         assignee_employee_id: data.assigneeEmployeeId || null,
         assignee_name: assigneeName,
         due_date: data.dueDate || null,
+        estimated_minutes:
+          data.estimatedMinutes != null && data.estimatedMinutes > 0
+            ? data.estimatedMinutes
+            : null,
         created_by: userId,
         completed_at: data.status === "done" ? new Date().toISOString() : null,
       })
@@ -103,6 +111,12 @@ export const updateTask = createServerFn({ method: "POST" })
       patch.assignee_name = data.assigneeName?.trim() || null;
     }
     if (data.dueDate !== undefined) patch.due_date = data.dueDate || null;
+    if (data.estimatedMinutes !== undefined) {
+      patch.estimated_minutes =
+        data.estimatedMinutes != null && data.estimatedMinutes > 0
+          ? data.estimatedMinutes
+          : null;
+    }
 
     const { data: row, error } = await supabase
       .from("hr_tasks")

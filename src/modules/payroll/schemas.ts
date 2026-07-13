@@ -11,8 +11,20 @@ export const updateComponentSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(2).max(120).optional(),
   rateValue: z.coerce.number().min(0).optional(),
-  calcMethod: z.enum(["base_salary", "fixed", "percent_of_base", "percent_of_gross"]).optional(),
+  calcMethod: z
+    .enum([
+      "base_salary",
+      "fixed",
+      "percent_of_base",
+      "percent_of_gross",
+      "worked_hours",
+      "overtime_hours",
+      "igr_progressive",
+    ])
+    .optional(),
   isActive: z.boolean().optional(),
+  subjectToIgr: z.boolean().optional(),
+  subjectToRetirement: z.boolean().optional(),
 });
 
 export const createComponentSchema = z.object({
@@ -25,8 +37,17 @@ export const createComponentSchema = z.object({
     .regex(/^[A-Z0-9_]+$/, "Code en MAJUSCULES, chiffres et _"),
   name: z.string().trim().min(2).max(120),
   kind: z.enum(["earning", "deduction", "employer_contribution"]),
-  calcMethod: z.enum(["fixed", "percent_of_base", "percent_of_gross"]),
+  calcMethod: z.enum([
+    "fixed",
+    "percent_of_base",
+    "percent_of_gross",
+    "worked_hours",
+    "overtime_hours",
+    "igr_progressive",
+  ]),
   rateValue: z.coerce.number().min(0).default(0),
+  subjectToIgr: z.boolean().optional(),
+  subjectToRetirement: z.boolean().optional(),
 });
 
 export const transitionPayrollSchema = z.object({

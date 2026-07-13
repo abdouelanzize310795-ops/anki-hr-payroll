@@ -14,15 +14,19 @@ import {
 } from "@/components/ui/select";
 import {
   FolderKanban, Upload, FileText, Folder, HardDrive, Building2, Download, Trash2, Search,
+  FilePlus2, Sparkles,
 } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { listCompanies } from "@/modules/companies/company.functions";
 import { listEmployees } from "@/modules/employees/employee.functions";
 import {
   abortDocumentUpload,
+  createDocumentFromTemplate,
   documentStats,
   getDocumentDownloadUrl,
+  getDocumentHtmlContent,
   listDocuments,
+  listDocumentTemplates,
   prepareDocumentUpload,
   softDeleteDocument,
 } from "@/modules/documents/document.functions";
@@ -42,6 +46,16 @@ export const Route = createFileRoute("/_app/documents")({ component: DocumentsPa
 
 const appRouteApi = getRouteApi("/_app");
 
+type TemplateCard = {
+  id: string;
+  category: DocumentCategory;
+  title: string;
+  shortLabel: string;
+  description: string;
+  note: string | null;
+  fields: string[];
+};
+
 function DocumentsPage() {
   const { auth } = appRouteApi.useRouteContext();
   const profileCompanyId = auth.profile?.company_id ?? null;
@@ -51,6 +65,7 @@ function DocumentsPage() {
 
   const [companies, setCompanies] = useState<CompanyWithMeta[]>([]);
   const [employees, setEmployees] = useState<EmployeeWithRelations[]>([]);
+  const [templates, setTemplates] = useState<TemplateCard[]>([]);
   const [companyFilter, setCompanyFilter] = useState<string>(profileCompanyId ?? "all");
   const [categoryFilter, setCategoryFilter] = useState<"all" | DocumentCategory>("all");
   const [docs, setDocs] = useState<HrDocumentWithMeta[]>([]);
@@ -65,6 +80,10 @@ function DocumentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [genBusy, setGenBusy] = useState<string | null>(null);
+  const [templateEmployeeId, setTemplateEmployeeId] = useState("");
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState("");
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<DocumentCategory>("other");
@@ -80,7 +99,7 @@ function DocumentsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [rows, s] = await Promise.all([
+      const [rows, s, tpls] = await Promise.all([
         listDocuments({
           data: {
             companyId: effectiveCompanyId,
@@ -89,9 +108,11 @@ function DocumentsPage() {
           },
         }),
         documentStats({ data: { companyId: effectiveCompanyId } }),
+        listDocumentTemplates(),
       ]);
       setDocs(rows);
       setStats(s);
+      setTemplates(tpls as TemplateCard[]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Chargement impossible");
     } finally {
@@ -129,6 +150,15 @@ function DocumentsPage() {
       })),
     [stats],
   );
+
+  const templatesGrouped = useMemo(() => {
+    const groups = DOCUMENT_CATEGORIES.map((c) => ({
+      category: c,
+      label: documentCategoryLabel[c],
+      items: templates.filter((t) => t.category === c),
+    }));
+    return groups.filter((g) => g.items.length > 0);
+  }, [templates]);
 
   const handleUpload = async () => {
     const companyId = effectiveCompanyId;
@@ -196,13 +226,98 @@ function DocumentsPage() {
     }
   };
 
+  const handleGenerateTemplate = async (templateId: string) => {
+    const companyId = effectiveCompanyId;
+    if (!companyId) {
+      setError("Sélectionnez une entreprise pour générer un modèle");
+      return;
+    }
+    setGenBusy(templateId);
+    setError(null);
+    try {
+      const result = await createDocumentFromTemplate({
+        data: {
+          companyId,
+          templateId,
+          employeeId: templateEmployeeId || null,
+        },
+      });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      await load();
+      await handleDownload(result.data.document.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Génération impossible");
+    } finally {
+      setGenBusy(null);
+    }
+  };
+
+  const handleGenerateAll = async () => {
+    const companyId = effectiveCompanyId;
+    if (!companyId) {
+      setError("Sélectionnez une entreprise");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      for (const t of templates) {
+        const result = await createDocumentFromTemplate({
+          data: {
+            companyId,
+            templateId: t.id,
+            employeeId: templateEmployeeId || null,
+          },
+        });
+        if (!result.ok) throw new Error(`${t.shortLabel}: ${result.message}`);
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Génération groupée impossible");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleDownload = async (id: string) => {
+    setError(null);
     const result = await getDocumentDownloadUrl({ data: { id } });
     if (!result.ok) {
       setError(result.message);
       return;
     }
-    window.open(result.data.url, "_blank", "noopener,noreferrer");
+
+    const isHtml =
+      (result.data.mimeType ?? "").includes("html") ||
+      result.data.fileName.toLowerCase().endsWith(".html");
+
+    if (isHtml) {
+      const htmlRes = await getDocumentHtmlContent({ data: { id } });
+      if (!htmlRes.ok) {
+        setError(htmlRes.message);
+        return;
+      }
+      setPreviewHtml(htmlRes.data.html);
+      setPreviewTitle(htmlRes.data.title);
+      return;
+    }
+
+    const preview = window.open("about:blank", "_blank");
+    if (preview) {
+      preview.location.href = result.data.url;
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = result.data.url;
+    a.download = result.data.fileName;
+    a.rel = "noopener";
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   const handleDelete = async (id: string) => {
@@ -219,87 +334,98 @@ function DocumentsPage() {
       <PageHeader
         badge="Coffre"
         title="Documents"
-        description="Contrats, bulletins, pièces d’identité — stockage privé (max 10 Mo / fichier)."
+        description="Modèles RH Comores + coffre privé (max 10 Mo / fichier)."
         actions={
           canManage ? (
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" disabled={!effectiveCompanyId && admin && companyFilter === "all"}>
-                  <Upload className="mr-1.5 h-4 w-4" />
-                  Téléverser
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle className="font-display">Ajouter un document</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-3">
-                  {!lockedCompanyId && (
-                    <div className="space-y-1">
-                      <Label>Entreprise</Label>
-                      <Select
-                        value={companyFilter === "all" ? "" : companyFilter}
-                        onValueChange={setCompanyFilter}
-                      >
-                        <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
-                        <SelectContent>
-                          {companies.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>{c.legal_name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                  <div className="space-y-1">
-                    <Label>Titre</Label>
-                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Contrat CDI — Amina Y." />
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="space-y-1">
-                      <Label>Catégorie</Label>
-                      <Select value={category} onValueChange={(v) => setCategory(v as DocumentCategory)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {DOCUMENT_CATEGORIES.map((c) => (
-                            <SelectItem key={c} value={c}>{documentCategoryLabel[c]}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1">
-                      <Label>Employé (optionnel)</Label>
-                      <Select value={employeeId || "__none"} onValueChange={(v) => setEmployeeId(v === "__none" ? "" : v)}>
-                        <SelectTrigger><SelectValue placeholder="Entreprise" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none">Non lié</SelectItem>
-                          {employees.map((e) => (
-                            <SelectItem key={e.id} value={e.id}>
-                              {e.first_name} {e.last_name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Description</Label>
-                    <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Fichier</Label>
-                    <Input
-                      type="file"
-                      accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xlsx,.csv,.txt"
-                      onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                    />
-                    <p className="text-[11px] text-muted-foreground">PDF, images, Word, Excel — 10 Mo max</p>
-                  </div>
-                  <Button className="w-full" disabled={busy} onClick={() => void handleUpload()}>
-                    {busy ? "Envoi…" : "Enregistrer"}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || !effectiveCompanyId}
+                onClick={() => void handleGenerateAll()}
+              >
+                <Sparkles className="mr-1.5 h-4 w-4" />
+                {busy ? "Génération…" : "Générer tous les modèles"}
+              </Button>
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" disabled={!effectiveCompanyId && admin && companyFilter === "all"}>
+                    <Upload className="mr-1.5 h-4 w-4" />
+                    Téléverser
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle className="font-display">Ajouter un document</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3">
+                    {!lockedCompanyId && (
+                      <div className="space-y-1">
+                        <Label>Entreprise</Label>
+                        <Select
+                          value={companyFilter === "all" ? "" : companyFilter}
+                          onValueChange={setCompanyFilter}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
+                          <SelectContent>
+                            {companies.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>{c.legal_name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <Label>Titre</Label>
+                      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Contrat CDI — Amina Y." />
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label>Catégorie</Label>
+                        <Select value={category} onValueChange={(v) => setCategory(v as DocumentCategory)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {DOCUMENT_CATEGORIES.map((c) => (
+                              <SelectItem key={c} value={c}>{documentCategoryLabel[c]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Employé (optionnel)</Label>
+                        <Select value={employeeId || "__none"} onValueChange={(v) => setEmployeeId(v === "__none" ? "" : v)}>
+                          <SelectTrigger><SelectValue placeholder="Entreprise" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none">Non lié</SelectItem>
+                            {employees.map((e) => (
+                              <SelectItem key={e.id} value={e.id}>
+                                {e.first_name} {e.last_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Description</Label>
+                      <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>Fichier</Label>
+                      <Input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xlsx,.csv,.txt,.html"
+                        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                      />
+                      <p className="text-[11px] text-muted-foreground">PDF, images, Word, Excel, HTML — 10 Mo max</p>
+                    </div>
+                    <Button className="w-full" disabled={busy} onClick={() => void handleUpload()}>
+                      {busy ? "Envoi…" : "Enregistrer"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
           ) : null
         }
       />
@@ -308,7 +434,7 @@ function DocumentsPage() {
         <StatCard label="Fichiers" value={String(stats.fileCount)} icon={FileText} accent="primary" />
         <StatCard label="Catégories" value={String(stats.folderCount)} icon={Folder} accent="gold" />
         <StatCard label="Stockage" value={formatFileSize(stats.totalBytes)} icon={HardDrive} accent="success" />
-        <StatCard label="Partagés" value={String(stats.fileCount)} icon={FolderKanban} accent="primary" />
+        <StatCard label="Modèles" value={String(templates.length)} icon={FilePlus2} accent="primary" />
       </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -322,6 +448,24 @@ function DocumentsPage() {
               <SelectItem value="all">Toutes les entreprises</SelectItem>
               {companies.map((c) => (
                 <SelectItem key={c.id} value={c.id}>{c.legal_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {canManage && (
+          <Select
+            value={templateEmployeeId || "__none"}
+            onValueChange={(v) => setTemplateEmployeeId(v === "__none" ? "" : v)}
+          >
+            <SelectTrigger className="w-full sm:w-56">
+              <SelectValue placeholder="Employé pour modèles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">Modèle générique</SelectItem>
+              {employees.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  Remplir avec {e.first_name} {e.last_name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -345,6 +489,87 @@ function DocumentsPage() {
         <p className="mt-4 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
+      )}
+
+      <Dialog
+        open={Boolean(previewHtml)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPreviewHtml(null);
+            setPreviewTitle("");
+          }
+        }}
+      >
+        <DialogContent className="flex h-[90vh] max-w-4xl flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
+          <DialogHeader className="flex flex-row items-center justify-between space-y-0 border-b border-border px-4 py-3 pr-12">
+            <DialogTitle className="truncate font-display text-base">{previewTitle || "Aperçu"}</DialogTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const w = window.open("", "_blank");
+                if (!w || !previewHtml) return;
+                w.document.open();
+                w.document.write(previewHtml);
+                w.document.close();
+                w.focus();
+                window.setTimeout(() => w.print(), 300);
+              }}
+            >
+              Imprimer / PDF
+            </Button>
+          </DialogHeader>
+          {previewHtml && (
+            <iframe
+              title={previewTitle || "Aperçu document"}
+              className="min-h-0 w-full flex-1 bg-white"
+              srcDoc={previewHtml}
+              sandbox=""
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {canManage && (
+        <div className="mt-8 space-y-6">
+          <div>
+            <h2 className="font-display text-lg font-semibold text-foreground">Modèles de documents</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {templates.length} modèles RH — générez un fichier prérempli dans le coffre (HTML imprimable).
+            </p>
+          </div>
+          {templatesGrouped.map((group) => (
+            <SectionCard key={group.category} title={group.label} description={`${group.items.length} modèle(s)`}>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {group.items.map((t) => (
+                  <div
+                    key={t.id}
+                    className="flex flex-col rounded-xl border border-border/80 bg-muted/20 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-mono uppercase tracking-wider text-reef">
+                          {t.shortLabel}
+                        </div>
+                        <div className="mt-1 text-sm font-medium leading-snug">{t.title}</div>
+                      </div>
+                      <FilePlus2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    </div>
+                    <p className="mt-2 flex-1 text-xs text-muted-foreground">{t.description}</p>
+                    <Button
+                      size="sm"
+                      className="mt-3 w-full"
+                      disabled={!effectiveCompanyId || genBusy === t.id || busy}
+                      onClick={() => void handleGenerateTemplate(t.id)}
+                    >
+                      {genBusy === t.id ? "Génération…" : "Générer"}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+          ))}
+        </div>
       )}
 
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
@@ -376,7 +601,7 @@ function DocumentsPage() {
           {!loading && docs.length === 0 ? (
             <EmptyPlaceholder
               title="Aucun document"
-              description="Téléversez un contrat, bulletin ou pièce d’identité."
+              description="Générez un modèle ou téléversez un fichier."
               icon={FileText}
             />
           ) : (

@@ -1,12 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
+import { createServerOnlyFn } from "@tanstack/react-start";
 import { getCookies, setCookie } from "@tanstack/react-start/server";
 import { getPublicEnv } from "./env";
 
 /**
  * Supabase server client for TanStack Start server functions / loaders.
- * Session cookies are read/written via Start request helpers.
+ * Wrapped in createServerOnlyFn so `@tanstack/react-start/server` is pruned
+ * from the client bundle (import protection).
  */
-export function createSupabaseServerClient() {
+export const createSupabaseServerClient = createServerOnlyFn(() => {
   const env = getPublicEnv();
 
   return createServerClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {
@@ -21,4 +23,4 @@ export function createSupabaseServerClient() {
       },
     },
   });
-}
+});

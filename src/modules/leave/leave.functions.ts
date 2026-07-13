@@ -1,7 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { createLeaveRequestSchema, transitionLeaveSchema } from "./schemas";
+import {
+  createLeaveRequestSchema,
+  reviewMedicalLeaveSchema,
+  transitionLeaveSchema,
+} from "./schemas";
 import {
   countBusinessDays,
   type LeaveBalanceWithType,
@@ -77,7 +81,16 @@ export const listLeaveRequests = createServerFn({ method: "GET" })
       .object({
         companyId: z.string().uuid().optional(),
         status: z
-          .enum(["draft", "pending", "approved", "rejected", "cancelled", "all"])
+          .enum([
+            "draft",
+            "pending",
+            "pending_manager",
+            "pending_hr",
+            "approved",
+            "rejected",
+            "cancelled",
+            "all",
+          ])
           .optional(),
         search: z.string().optional(),
       })
@@ -94,7 +107,13 @@ export const listLeaveRequests = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false });
 
     if (data?.companyId) query = query.eq("company_id", data.companyId);
-    if (data?.status && data.status !== "all") query = query.eq("status", data.status);
+    if (data?.status && data.status !== "all") {
+      if (data.status === "pending" || data.status === "pending_manager") {
+        query = query.in("status", ["pending", "pending_manager"]);
+      } else {
+        query = query.eq("status", data.status);
+      }
+    }
 
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
@@ -102,14 +121,19 @@ export const listLeaveRequests = createServerFn({ method: "GET" })
     const requests = ((rows ?? []) as LeaveRequest[]).map(mapRequest);
     if (requests.length === 0) return [];
 
-    const employeeIds = [...new Set(requests.map((r) => r.employee_id))];
+    const employeeIds = [
+      ...new Set([
+        ...requests.map((r) => r.employee_id),
+        ...requests.map((r) => r.acting_manager_employee_id).filter(Boolean) as string[],
+      ]),
+    ];
     const companyIds = [...new Set(requests.map((r) => r.company_id))];
     const typeIds = [...new Set(requests.map((r) => r.leave_type_id))];
 
     const [employeesRes, companiesRes, typesRes] = await Promise.all([
       supabase.from("employees").select("id, first_name, last_name").in("id", employeeIds),
       supabase.from("companies").select("id, legal_name").in("id", companyIds),
-      supabase.from("leave_types").select("id, name, color").in("id", typeIds),
+      supabase.from("leave_types").select("id, name, color, code").in("id", typeIds),
     ]);
 
     const empMap = new Map(
@@ -117,7 +141,7 @@ export const listLeaveRequests = createServerFn({ method: "GET" })
     );
     const companyMap = new Map((companiesRes.data ?? []).map((c) => [c.id, c.legal_name]));
     const typeMap = new Map(
-      (typesRes.data ?? []).map((t) => [t.id, { name: t.name, color: t.color }]),
+      (typesRes.data ?? []).map((t) => [t.id, { name: t.name, color: t.color, code: t.code }]),
     );
 
     let result: LeaveRequestWithRelations[] = requests.map((r) => ({
@@ -125,7 +149,11 @@ export const listLeaveRequests = createServerFn({ method: "GET" })
       employee_name: empMap.get(r.employee_id) ?? null,
       company_name: companyMap.get(r.company_id) ?? null,
       leave_type_name: typeMap.get(r.leave_type_id)?.name ?? null,
+      leave_type_code: typeMap.get(r.leave_type_id)?.code ?? null,
       leave_type_color: typeMap.get(r.leave_type_id)?.color ?? null,
+      acting_manager_name: r.acting_manager_employee_id
+        ? empMap.get(r.acting_manager_employee_id) ?? null
+        : null,
     }));
 
     const search = data?.search?.trim().toLowerCase();
@@ -158,7 +186,9 @@ export const leaveStats = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
 
     const list = rows ?? [];
-    const pending = list.filter((r) => r.status === "pending").length;
+    const pending = list.filter((r) =>
+      ["pending", "pending_manager", "pending_hr"].includes(r.status),
+    ).length;
     const onLeaveToday = list.filter(
       (r) => r.status === "approved" && r.start_date <= today && r.end_date >= today,
     ).length;
@@ -291,7 +321,7 @@ export const createLeaveRequest = createServerFn({ method: "POST" })
 
     const { data: leaveType, error: typeError } = await supabase
       .from("leave_types")
-      .select("id, company_id")
+      .select("id, company_id, code")
       .eq("id", data.leaveTypeId)
       .is("deleted_at", null)
       .maybeSingle();
@@ -299,6 +329,10 @@ export const createLeaveRequest = createServerFn({ method: "POST" })
     if (typeError || !leaveType || leaveType.company_id !== data.companyId) {
       return { ok: false, message: "Type de congé introuvable" };
     }
+
+    const isMedical =
+      data.isMedical === true ||
+      String(leaveType.code ?? "").toUpperCase() === "SICK";
 
     const { data: row, error } = await supabase
       .from("leave_requests")
@@ -310,6 +344,9 @@ export const createLeaveRequest = createServerFn({ method: "POST" })
         end_date: data.endDate,
         days_count: days,
         reason: data.reason?.trim() || null,
+        attachment_url: data.attachmentUrl?.trim() || null,
+        medical_status: isMedical ? "pending" : null,
+        acting_manager_employee_id: data.actingManagerEmployeeId || null,
         status: "draft",
         created_by: userId,
       })
@@ -350,11 +387,112 @@ export const transitionLeaveRequest = createServerFn({ method: "POST" })
     return { ok: true, data: mapRequest(row as LeaveRequest) };
   });
 
+export const reviewMedicalLeave = createServerFn({ method: "POST" })
+  .validator(reviewMedicalLeaveSchema)
+  .handler(async ({ data }): Promise<ActionResult<LeaveRequest>> => {
+    await requireUserId();
+    const supabase = createSupabaseServerClient();
+
+    const { data: existing, error: findError } = await supabase
+      .from("leave_requests")
+      .select("id, company_id, medical_status")
+      .eq("id", data.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (findError || !existing) {
+      return { ok: false, message: "Demande introuvable" };
+    }
+    if (!existing.medical_status) {
+      return { ok: false, message: "Cette demande n’est pas un congé médical" };
+    }
+
+    const patch: Record<string, unknown> = {
+      medical_status: data.medicalStatus,
+    };
+    if (data.note?.trim()) {
+      patch.review_note = data.note.trim();
+    }
+
+    const { data: row, error } = await supabase
+      .from("leave_requests")
+      .update(patch)
+      .eq("id", data.id)
+      .select("*")
+      .single();
+
+    if (error || !row) {
+      return { ok: false, message: error?.message ?? "Mise à jour impossible" };
+    }
+
+    await supabase.rpc("write_audit_log", {
+      p_company_id: existing.company_id,
+      p_action: "leave.medical_review",
+      p_entity_type: "leave_request",
+      p_entity_id: data.id,
+      p_summary: `Certificat médical ${data.medicalStatus}`,
+      p_metadata: { medical_status: data.medicalStatus },
+    });
+
+    return { ok: true, data: mapRequest(row as LeaveRequest) };
+  });
+
 export type LeaveStats = {
   onLeaveToday: number;
   sick: number;
   parental: number;
   pending: number;
 };
+
+type EmployeeLite = { id: string; first_name: string; last_name: string };
+
+export const getLeaveActingOptions = createServerFn({ method: "GET" })
+  .validator(z.object({ employeeId: z.string().uuid(), companyId: z.string().uuid() }))
+  .handler(async ({ data }) => {
+    await requireUserId();
+    const supabase = createSupabaseServerClient();
+
+    const { data: isMgr } = await supabase.rpc("employee_is_department_manager", {
+      p_employee_id: data.employeeId,
+    });
+
+    if (!isMgr) {
+      return { isDepartmentManager: false as const, replacements: [] as EmployeeLite[] };
+    }
+
+    const { data: depts } = await supabase
+      .from("departments")
+      .select("id")
+      .eq("manager_employee_id", data.employeeId)
+      .is("deleted_at", null);
+
+    const deptIds = (depts ?? []).map((d) => d.id);
+    let query = supabase
+      .from("employees")
+      .select("id, first_name, last_name, department_id")
+      .eq("company_id", data.companyId)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .neq("id", data.employeeId)
+      .order("last_name");
+
+    if (deptIds.length) {
+      query = query.or(
+        `department_id.in.(${deptIds.join(",")}),department_id.is.null`,
+      );
+    }
+
+    const { data: emps, error } = await query;
+    if (error) throw new Error(error.message);
+
+    return {
+      isDepartmentManager: true as const,
+      replacements: (emps ?? []).map((e) => ({
+        id: e.id,
+        first_name: e.first_name,
+        last_name: e.last_name,
+      })),
+    };
+  });
 
 export type { LeaveRequestStatus };

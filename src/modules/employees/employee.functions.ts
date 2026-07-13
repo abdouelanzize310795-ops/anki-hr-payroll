@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import {
   createDepartmentSchema,
   createEmployeeSchema,
+  setDepartmentManagerSchema,
   updateEmployeeSchema,
 } from "./schemas";
 import type { Employee, EmployeeStatus, EmployeeWithRelations } from "./types";
@@ -133,6 +134,11 @@ export const createEmployee = createServerFn({ method: "POST" })
     const userId = await requireUserId();
     const supabase = createSupabaseServerClient();
 
+    const { error: seatError } = await supabase.rpc("assert_company_can_add_employee", {
+      p_company_id: data.companyId,
+    });
+    if (seatError) return { ok: false, message: seatError.message };
+
     const { data: row, error } = await supabase
       .from("employees")
       .insert({
@@ -161,7 +167,115 @@ export const createEmployee = createServerFn({ method: "POST" })
       .single();
 
     if (error) return { ok: false, message: error.message };
-    return { ok: true, data: { ...(row as Employee), base_salary: Number((row as Employee).base_salary) } };
+
+    const employee = {
+      ...(row as Employee),
+      base_salary: Number((row as Employee).base_salary),
+    };
+
+    await supabase.rpc("write_audit_log", {
+      p_company_id: data.companyId,
+      p_action: "employee.create",
+      p_entity_type: "employee",
+      p_entity_id: employee.id,
+      p_summary: `Création employé ${employee.first_name} ${employee.last_name}`,
+      p_metadata: { employee_number: employee.employee_number },
+    });
+
+    return { ok: true, data: employee };
+  });
+
+const importEmployeeRowSchema = z.object({
+  firstName: z.string().trim().min(1),
+  lastName: z.string().trim().min(1),
+  email: z.string().trim().optional().or(z.literal("")),
+  jobTitle: z.string().trim().optional().or(z.literal("")),
+  baseSalary: z.coerce.number().min(0).optional(),
+  hireDate: z.string().optional().or(z.literal("")),
+  departmentName: z.string().trim().optional().or(z.literal("")),
+});
+
+export const importEmployeesCsv = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      companyId: z.string().uuid(),
+      rows: z.array(importEmployeeRowSchema).min(1).max(500),
+    }),
+  )
+  .handler(async ({ data }): Promise<{ imported: number; errors: string[] }> => {
+    const userId = await requireUserId();
+    const supabase = createSupabaseServerClient();
+    const today = new Date().toISOString().slice(0, 10);
+    const errors: string[] = [];
+    let imported = 0;
+
+    const { data: departments } = await supabase
+      .from("departments")
+      .select("id, name")
+      .eq("company_id", data.companyId)
+      .is("deleted_at", null);
+    const deptByName = new Map(
+      (departments ?? []).map((d) => [d.name.trim().toLowerCase(), d.id]),
+    );
+
+    for (let i = 0; i < data.rows.length; i++) {
+      const row = data.rows[i];
+      const label = `Ligne ${i + 1} (${row.firstName} ${row.lastName})`;
+
+      const { error: seatError } = await supabase.rpc("assert_company_can_add_employee", {
+        p_company_id: data.companyId,
+      });
+      if (seatError) {
+        errors.push(`${label}: ${seatError.message}`);
+        break;
+      }
+
+      let departmentId: string | null = null;
+      if (row.departmentName?.trim()) {
+        departmentId = deptByName.get(row.departmentName.trim().toLowerCase()) ?? null;
+        if (!departmentId) {
+          errors.push(`${label}: département « ${row.departmentName} » introuvable`);
+          continue;
+        }
+      }
+
+      const hireDate = row.hireDate?.trim() || today;
+      const { data: inserted, error } = await supabase
+        .from("employees")
+        .insert({
+          company_id: data.companyId,
+          department_id: departmentId,
+          first_name: row.firstName.trim(),
+          last_name: row.lastName.trim(),
+          email: row.email?.trim() || null,
+          job_title: row.jobTitle?.trim() || null,
+          hire_date: hireDate,
+          status: "active",
+          base_salary: row.baseSalary ?? 0,
+          currency_code: "KMF",
+          created_by: userId,
+        })
+        .select("id, first_name, last_name, employee_number")
+        .single();
+
+      if (error || !inserted) {
+        errors.push(`${label}: ${error?.message ?? "création impossible"}`);
+        continue;
+      }
+
+      await supabase.rpc("write_audit_log", {
+        p_company_id: data.companyId,
+        p_action: "employee.import",
+        p_entity_type: "employee",
+        p_entity_id: inserted.id,
+        p_summary: `Import CSV employé ${inserted.first_name} ${inserted.last_name}`,
+        p_metadata: { employee_number: inserted.employee_number },
+      });
+
+      imported += 1;
+    }
+
+    return { imported, errors };
   });
 
 export const updateEmployee = createServerFn({ method: "POST" })
@@ -231,6 +345,20 @@ export const createDepartment = createServerFn({ method: "POST" })
       p_name: data.name,
       p_code: data.code || null,
       p_branch_id: data.branchId || null,
+      p_manager_employee_id: data.managerEmployeeId || null,
+    });
+    if (error) return { ok: false, message: error.message };
+    return { ok: true, data: dept as Department };
+  });
+
+export const setDepartmentManager = createServerFn({ method: "POST" })
+  .validator(setDepartmentManagerSchema)
+  .handler(async ({ data }): Promise<ActionResult<Department>> => {
+    await requireUserId();
+    const supabase = createSupabaseServerClient();
+    const { data: dept, error } = await supabase.rpc("set_department_manager", {
+      p_department_id: data.departmentId,
+      p_manager_employee_id: data.managerEmployeeId,
     });
     if (error) return { ok: false, message: error.message };
     return { ok: true, data: dept as Department };
@@ -256,3 +384,48 @@ export const employeeStats = createServerFn({ method: "GET" })
       onboarding: list.filter((e) => e.status === "onboarding").length,
     };
   });
+
+export type EmployeeAccountProvision = {
+  created: boolean;
+  linked: boolean;
+  email: string;
+  temporaryPassword: string | null;
+  userId: string;
+};
+
+export const provisionEmployeeAccount = createServerFn({ method: "POST" })
+  .validator(z.object({ employeeId: z.string().uuid() }))
+  .handler(
+    async ({
+      data,
+    }): Promise<
+      { ok: true; data: EmployeeAccountProvision } | { ok: false; message: string }
+    > => {
+      await requireUserId();
+      const supabase = createSupabaseServerClient();
+      const { data: provision, error } = await supabase.rpc("provision_employee_account", {
+        p_employee_id: data.employeeId,
+      });
+      if (error) return { ok: false, message: error.message };
+      const p = provision as {
+        created?: boolean;
+        linked?: boolean;
+        email?: string;
+        temporary_password?: string | null;
+        user_id?: string;
+      };
+      if (!p?.user_id || !p.email) {
+        return { ok: false, message: "Création du compte impossible" };
+      }
+      return {
+        ok: true,
+        data: {
+          created: Boolean(p.created),
+          linked: Boolean(p.linked),
+          email: p.email,
+          temporaryPassword: p.temporary_password ?? null,
+          userId: p.user_id,
+        },
+      };
+    },
+  );
