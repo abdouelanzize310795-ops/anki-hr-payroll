@@ -11,7 +11,7 @@ import {
 import { createLeaveRequestSchema, type CreateLeaveRequestInput } from "@/modules/leave/schemas";
 import { listCompanies } from "@/modules/companies/company.functions";
 import { listEmployees } from "@/modules/employees/employee.functions";
-import { listLeaveTypes } from "@/modules/leave/leave.functions";
+import { getLeaveActingOptions, listLeaveTypes } from "@/modules/leave/leave.functions";
 import { countBusinessDays, type LeaveType } from "@/modules/leave/types";
 import type { CompanyWithMeta } from "@/modules/companies/types";
 import type { EmployeeWithRelations } from "@/modules/employees/types";
@@ -31,6 +31,10 @@ export function LeaveRequestForm({
   const [employees, setEmployees] = useState<EmployeeWithRelations[]>([]);
   const [types, setTypes] = useState<LeaveType[]>([]);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [isDeptManager, setIsDeptManager] = useState(false);
+  const [replacements, setReplacements] = useState<
+    Array<{ id: string; first_name: string; last_name: string }>
+  >([]);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -43,14 +47,23 @@ export function LeaveRequestForm({
       startDate: today,
       endDate: today,
       reason: "",
+      attachmentUrl: "",
+      isMedical: false,
+      actingManagerEmployeeId: null,
       submitNow: true,
     },
   });
 
   const companyId = form.watch("companyId");
+  const employeeId = form.watch("employeeId");
+  const leaveTypeId = form.watch("leaveTypeId");
   const startDate = form.watch("startDate");
   const endDate = form.watch("endDate");
   const businessDays = countBusinessDays(startDate, endDate);
+  const selectedType = types.find((t) => t.id === leaveTypeId);
+  const showMedicalAttachment =
+    form.watch("isMedical") ||
+    String(selectedType?.code ?? "").toUpperCase() === "SICK";
 
   useEffect(() => {
     void (async () => {
@@ -84,12 +97,40 @@ export function LeaveRequestForm({
     })();
   }, [companyId, form]);
 
+  useEffect(() => {
+    if (!companyId || !employeeId) {
+      setIsDeptManager(false);
+      setReplacements([]);
+      form.setValue("actingManagerEmployeeId", null);
+      return;
+    }
+    void (async () => {
+      try {
+        const meta = await getLeaveActingOptions({
+          data: { companyId, employeeId },
+        });
+        setIsDeptManager(meta.isDepartmentManager);
+        setReplacements(meta.replacements);
+        if (!meta.isDepartmentManager) {
+          form.setValue("actingManagerEmployeeId", null);
+        }
+      } catch {
+        setIsDeptManager(false);
+        setReplacements([]);
+      }
+    })();
+  }, [companyId, employeeId, form]);
+
   return (
     <form
       className="space-y-4"
       onSubmit={form.handleSubmit(async (values) => {
         setServerError(null);
         try {
+          if (isDeptManager && !values.actingManagerEmployeeId) {
+            setServerError("Désignez un manager remplaçant pour la durée du congé");
+            return;
+          }
           await onSubmit(values);
         } catch (err) {
           setServerError(err instanceof Error ? err.message : "Erreur inattendue");
@@ -105,6 +146,7 @@ export function LeaveRequestForm({
               form.setValue("companyId", v);
               form.setValue("employeeId", "");
               form.setValue("leaveTypeId", "");
+              form.setValue("actingManagerEmployeeId", null);
             }}
           >
             <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
@@ -122,7 +164,10 @@ export function LeaveRequestForm({
           <Label>Employé</Label>
           <Select
             value={form.watch("employeeId")}
-            onValueChange={(v) => form.setValue("employeeId", v)}
+            onValueChange={(v) => {
+              form.setValue("employeeId", v);
+              form.setValue("actingManagerEmployeeId", null);
+            }}
           >
             <SelectTrigger><SelectValue placeholder="Choisir" /></SelectTrigger>
             <SelectContent>
@@ -175,10 +220,54 @@ export function LeaveRequestForm({
         {businessDays} jour{businessDays > 1 ? "s" : ""} ouvré{businessDays > 1 ? "s" : ""} (lun–ven)
       </p>
 
+      {isDeptManager && (
+        <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+          <Label>Manager remplaçant *</Label>
+          <p className="text-xs text-muted-foreground">
+            Obligatoire : il valide les congés de l’équipe du {startDate} au {endDate}.
+            Le titulaire reprend automatiquement après.
+          </p>
+          <Select
+            value={form.watch("actingManagerEmployeeId") ?? "__none"}
+            onValueChange={(v) =>
+              form.setValue("actingManagerEmployeeId", v === "__none" ? null : v)
+            }
+          >
+            <SelectTrigger><SelectValue placeholder="Choisir un collaborateur" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">Choisir…</SelectItem>
+              {replacements.map((e) => (
+                <SelectItem key={e.id} value={e.id}>
+                  {e.first_name} {e.last_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="reason">Motif</Label>
         <Textarea id="reason" rows={3} {...form.register("reason")} placeholder="Optionnel" />
       </div>
+
+      {showMedicalAttachment && (
+        <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
+          <Label htmlFor="attachmentUrl">Certificat médical (URL)</Label>
+          <p className="text-xs text-muted-foreground">
+            Lien vers le certificat (Drive, e-mail, etc.). Le statut médical passera en attente de justification.
+          </p>
+          <Input
+            id="attachmentUrl"
+            type="url"
+            placeholder="https://…"
+            {...form.register("attachmentUrl")}
+          />
+          {form.formState.errors.attachmentUrl && (
+            <p className="text-xs text-destructive">{form.formState.errors.attachmentUrl.message}</p>
+          )}
+        </div>
+      )}
 
       {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 

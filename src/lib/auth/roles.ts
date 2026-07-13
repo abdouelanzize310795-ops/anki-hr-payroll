@@ -5,44 +5,55 @@ export function getUserRole(user: AuthUser | null | undefined): AppRole {
   return user?.profile?.role ?? "employee";
 }
 
+/** Tenant RH operators — never includes platform_admin. */
 export function isEmployerLike(role: AppRole): boolean {
-  return role === "employer" || role === "hr" || role === "platform_admin";
+  return role === "employer" || role === "hr";
 }
 
 export function isManagerLike(role: AppRole): boolean {
   return role === "manager" || isEmployerLike(role);
 }
 
-/** Nav URLs allowed per role — aligned with product workflows. */
+/** Routes allowed for platform console (ops SaaS). */
+export const PLATFORM_ADMIN_ROUTES = new Set([
+  "/",
+  "/admin",
+  "/companies",
+  "/company-access",
+  "/notifications",
+  "/settings",
+]);
+
+/** Nav URLs allowed per role — console ops ≠ workspace RH. */
 export const NAV_BY_ROLE: Record<AppRole, Set<string>> = {
   platform_admin: new Set([
-    "/", "/companies", "/employees", "/recruitment", "/contracts",
-    "/attendance", "/leave", "/payroll", "/accounting", "/transfers",
-    "/training", "/performance", "/tasks",
-    "/documents", "/assets", "/reports", "/notifications",
-    "/ai", "/subscriptions", "/admin", "/settings",
+    "/",
+    "/admin",
+    "/companies",
+    "/notifications",
+    "/settings",
   ]),
   employer: new Set([
     "/", "/companies", "/employees", "/recruitment", "/contracts",
-    "/attendance", "/leave", "/payroll", "/accounting", "/transfers",
+    "/attendance", "/leave", "/helpdesk", "/payroll", "/accounting", "/transfers",
     "/training", "/performance", "/tasks",
     "/documents", "/assets", "/reports", "/notifications",
     "/ai", "/subscriptions", "/settings",
   ]),
   hr: new Set([
     "/", "/companies", "/employees", "/recruitment", "/contracts",
-    "/attendance", "/leave", "/payroll", "/accounting", "/transfers",
+    "/attendance", "/leave", "/helpdesk", "/payroll", "/accounting", "/transfers",
     "/training", "/performance", "/tasks",
     "/documents", "/assets", "/reports", "/notifications",
     "/ai", "/subscriptions", "/settings",
   ]),
   manager: new Set([
-    "/", "/employees", "/attendance", "/leave", "/tasks",
+    "/", "/employees", "/attendance", "/leave", "/helpdesk", "/tasks",
     "/performance", "/documents", "/reports", "/notifications",
     "/ai", "/settings",
   ]),
   employee: new Set([
-    "/", "/attendance", "/leave", "/tasks",
+    "/", "/attendance", "/leave", "/helpdesk", "/tasks",
     "/contracts", "/payroll", "/documents", "/notifications",
     "/ai", "/settings",
   ]),
@@ -69,13 +80,13 @@ export const WORKFLOWS: Record<AppRole, { badge: string; title: string; steps: W
   },
   hr: {
     badge: "Parcours RH",
-    title: "Cycle mensuel RH & paie",
+    title: "Cycle social & paie",
     steps: [
-      { n: 1, title: "Créer l’entreprise", subtitle: "Paramètres et rubriques de paie", href: "/companies" },
-      { n: 2, title: "Ajouter les employés", subtitle: "Fiches et contrats électroniques", href: "/employees" },
-      { n: 3, title: "Suivre le mois", subtitle: "Pointage, tâches, congés", href: "/attendance" },
-      { n: 4, title: "Valider et générer la paie", subtitle: "Justificatifs et bulletins", href: "/payroll" },
-      { n: 5, title: "Payer et transmettre", subtitle: "Virements et envoi des bulletins", href: "/transfers" },
+      { n: 1, title: "Assigner les managers", subtitle: "Un manager par département", href: "/employees" },
+      { n: 2, title: "Gérer l’effectif", subtitle: "Employés, contrats, dossiers", href: "/employees" },
+      { n: 3, title: "Valider les congés", subtitle: "Après le manager → accord final RH", href: "/leave" },
+      { n: 4, title: "Calculer la paie", subtitle: "Heures, bulletins, approbation", href: "/payroll" },
+      { n: 5, title: "Payer et transmettre", subtitle: "Virements et rapports", href: "/transfers" },
     ],
   },
   employee: {
@@ -100,13 +111,13 @@ export const WORKFLOWS: Record<AppRole, { badge: string; title: string; steps: W
     ],
   },
   platform_admin: {
-    badge: "Parcours admin plateforme",
-    title: "Superviser AnkibaPay",
+    badge: "Console plateforme",
+    title: "Opérer AnkibaPay (SaaS)",
     steps: [
-      { n: 1, title: "Créer une entreprise cliente", subtitle: "Compte et accès initial", href: "/companies" },
-      { n: 2, title: "Paramétrer le cadre légal", subtitle: "SMIG, I.G.R., caisse de retraite", href: "/payroll" },
-      { n: 3, title: "Superviser la plateforme", subtitle: "Disponibilité et sécurité", href: "/admin" },
-      { n: 4, title: "Accompagner les clients", subtitle: "Support et mises à jour", href: "/admin" },
+      { n: 1, title: "Suivre les inscriptions", subtitle: "Paiements et dossiers", href: "/admin" },
+      { n: 2, title: "Valider les entreprises", subtitle: "Approuver ou refuser", href: "/admin" },
+      { n: 3, title: "Piloter les tenants", subtitle: "Liste et santé des comptes", href: "/companies" },
+      { n: 4, title: "Gérer votre compte ops", subtitle: "Sécurité et préférences", href: "/settings" },
     ],
   },
 };

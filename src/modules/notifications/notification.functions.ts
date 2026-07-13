@@ -15,7 +15,7 @@ export type AppNotification = {
   description: string;
   when: string;
   href: string;
-  kind: "payroll" | "leave" | "contract" | "attendance" | "task";
+  kind: "payroll" | "leave" | "contract" | "attendance" | "task" | "helpdesk";
   unread: boolean;
 };
 
@@ -31,24 +31,49 @@ function relativeFr(iso: string): string {
   return `il y a ${days} j`;
 }
 
+function mapKind(kind: string): AppNotification["kind"] {
+  if (
+    kind === "payroll" ||
+    kind === "leave" ||
+    kind === "contract" ||
+    kind === "attendance" ||
+    kind === "task" ||
+    kind === "helpdesk"
+  ) {
+    return kind;
+  }
+  return "leave";
+}
+
 export const listNotifications = createServerFn({ method: "GET" })
   .validator(z.object({ companyId: z.string().uuid().optional() }).optional())
   .handler(async ({ data }): Promise<AppNotification[]> => {
-    await requireUserId();
+    const userId = await requireUserId();
     const supabase = createSupabaseServerClient();
     const companyId = data?.companyId;
 
     const items: AppNotification[] = [];
 
-    let leaveQ = supabase
-      .from("leave_requests")
-      .select("id, status, created_at, days_count, start_date, end_date, employee_id")
-      .eq("status", "pending")
-      .is("deleted_at", null)
+    let storedQ = supabase
+      .from("app_notifications")
+      .select("id, kind, title, body, href, read_at, created_at, company_id")
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(10);
-    if (companyId) leaveQ = leaveQ.eq("company_id", companyId);
-    const { data: leaves } = await leaveQ;
+      .limit(30);
+    if (companyId) storedQ = storedQ.eq("company_id", companyId);
+    const { data: stored } = await storedQ;
+
+    for (const n of stored ?? []) {
+      items.push({
+        id: n.id,
+        title: n.title,
+        description: n.body ?? "",
+        when: relativeFr(n.created_at),
+        href: n.href || "/notifications",
+        kind: mapKind(n.kind),
+        unread: !n.read_at,
+      });
+    }
 
     let payrollQ = supabase
       .from("payroll_runs")
@@ -82,12 +107,7 @@ export const listNotifications = createServerFn({ method: "GET" })
     const { data: tasks } = await taskQ;
 
     const empIds = [
-      ...new Set(
-        [
-          ...(leaves ?? []).map((l) => l.employee_id),
-          ...(contracts ?? []).map((c) => c.employee_id),
-        ].filter(Boolean),
-      ),
+      ...new Set((contracts ?? []).map((c) => c.employee_id).filter(Boolean)),
     ] as string[];
 
     const { data: emps } = empIds.length
@@ -105,19 +125,6 @@ export const listNotifications = createServerFn({ method: "GET" })
         when: relativeFr(r.calculated_at || r.created_at),
         href: `/payroll/${r.id}`,
         kind: "payroll",
-        unread: true,
-      });
-    }
-
-    for (const l of leaves ?? []) {
-      const name = nameMap.get(l.employee_id) ?? "Employé";
-      items.push({
-        id: `leave-${l.id}`,
-        title: `${name} a demandé un congé`,
-        description: `${l.start_date} → ${l.end_date} (${l.days_count} j)`,
-        when: relativeFr(l.created_at),
-        href: "/leave",
-        kind: "leave",
         unread: true,
       });
     }
@@ -150,5 +157,32 @@ export const listNotifications = createServerFn({ method: "GET" })
       });
     }
 
-    return items.slice(0, 20);
+    return items.slice(0, 25);
+  });
+
+export const markNotificationRead = createServerFn({ method: "POST" })
+  .validator(z.object({ id: z.string().uuid() }))
+  .handler(async ({ data }): Promise<{ ok: true } | { ok: false; message: string }> => {
+    await requireUserId();
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase
+      .from("app_notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("id", data.id)
+      .is("read_at", null);
+    if (error) return { ok: false, message: error.message };
+    return { ok: true };
+  });
+
+export const markAllNotificationsRead = createServerFn({ method: "POST" })
+  .handler(async (): Promise<{ ok: true } | { ok: false; message: string }> => {
+    const userId = await requireUserId();
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase
+      .from("app_notifications")
+      .update({ read_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .is("read_at", null);
+    if (error) return { ok: false, message: error.message };
+    return { ok: true };
   });

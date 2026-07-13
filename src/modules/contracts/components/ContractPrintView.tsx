@@ -1,20 +1,32 @@
 import { Money } from "@/components/app/primitives";
 import type { ContractDetail } from "@/modules/contracts/types";
 import { contractTypeLabel } from "@/modules/contracts/types";
-import { brand } from "@/lib/brand";
+import { CompanyDocumentHeader } from "@/modules/companies/components/CompanyDocumentHeader";
 
 export function ContractPrintView({ contract }: { contract: ContractDetail }) {
   return (
     <article className="contract-print rounded-2xl border border-border bg-card p-6 text-sm text-foreground sm:p-10 print:border-0 print:p-0 print:shadow-none">
-      <header className="border-b border-border pb-6">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-reef">{brand.tagline}</p>
-        <h2 className="mt-2 font-display text-2xl font-bold text-primary">
-          Contrat de travail — {contractTypeLabel[contract.contract_type]}
-        </h2>
-        <p className="mt-1 text-muted-foreground">
-          N° <span className="font-mono text-foreground">{contract.contract_number}</span>
-        </p>
-      </header>
+      <CompanyDocumentHeader
+        company={{
+          legalName: contract.company_name || "Entreprise",
+          tradeName: contract.company_trade_name,
+          logoUrl: contract.company_logo_url,
+          address: contract.company_address,
+          city: contract.company_city,
+          region: contract.company_region,
+          phone: contract.company_phone,
+          email: contract.company_email,
+          taxId: contract.company_tax_id,
+          registrationNumber: contract.company_registration_number,
+        }}
+        documentTitle="Contrat de travail"
+        documentSubtitle={contractTypeLabel[contract.contract_type]}
+        rightMeta={
+          <p className="mt-1 text-xs text-muted-foreground">
+            N° <span className="font-mono text-foreground">{contract.contract_number}</span>
+          </p>
+        }
+      />
 
       <section className="mt-6 grid gap-6 sm:grid-cols-2">
         <div>
@@ -61,7 +73,7 @@ export function ContractPrintView({ contract }: { contract: ContractDetail }) {
           </div>
           <div className="rounded-xl bg-muted/40 px-4 py-3">
             <dt className="text-xs text-muted-foreground">Salaire de base</dt>
-            <dd className="font-display text-lg font-bold">
+            <dd className="font-medium">
               <Money value={contract.base_salary} currency={contract.currency_code} />
             </dd>
           </div>
@@ -88,16 +100,16 @@ export function ContractPrintView({ contract }: { contract: ContractDetail }) {
         </section>
       )}
 
-      <section className="mt-10 grid gap-8 border-t border-border pt-8 sm:grid-cols-2">
+      <section className="mt-10 grid gap-8 sm:grid-cols-2">
         <div>
-          <p className="text-xs text-muted-foreground">L’employeur</p>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-reef">Employeur</p>
           <p className="mt-6 font-medium">{contract.signed_by_employer_name || "________________"}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {contract.signed_at ? `Signé le ${new Date(contract.signed_at).toLocaleDateString("fr-FR")}` : "Signature"}
           </p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Le salarié</p>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-reef">Salarié</p>
           <p className="mt-6 font-medium">{contract.signed_by_employee_name || contract.employee_name || "________________"}</p>
           <p className="mt-1 text-xs text-muted-foreground">
             {contract.signature_otp_hint
@@ -106,10 +118,6 @@ export function ContractPrintView({ contract }: { contract: ContractDetail }) {
           </p>
         </div>
       </section>
-
-      <footer className="mt-8 text-center font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-        Document généré par AnkibaPay — valeur probante sous réserve du cadre légal comorien
-      </footer>
     </article>
   );
 }

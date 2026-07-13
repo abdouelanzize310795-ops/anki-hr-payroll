@@ -1,6 +1,8 @@
 export type LeaveRequestStatus =
   | "draft"
   | "pending"
+  | "pending_manager"
+  | "pending_hr"
   | "approved"
   | "rejected"
   | "cancelled";
@@ -43,6 +45,8 @@ export type LeaveBalanceWithType = LeaveBalance & {
   available_days?: number;
 };
 
+export type MedicalLeaveStatus = "pending" | "justified" | "rejected";
+
 export type LeaveRequest = {
   id: string;
   company_id: string;
@@ -52,10 +56,16 @@ export type LeaveRequest = {
   end_date: string;
   days_count: number;
   reason: string | null;
+  attachment_url: string | null;
+  medical_status: MedicalLeaveStatus | null;
   status: LeaveRequestStatus;
   reviewed_by: string | null;
   reviewed_at: string | null;
   review_note: string | null;
+  manager_reviewed_by: string | null;
+  manager_reviewed_at: string | null;
+  manager_note: string | null;
+  acting_manager_employee_id: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -66,12 +76,16 @@ export type LeaveRequestWithRelations = LeaveRequest & {
   employee_name?: string | null;
   company_name?: string | null;
   leave_type_name?: string | null;
+  leave_type_code?: string | null;
   leave_type_color?: string | null;
+  acting_manager_name?: string | null;
 };
 
 export const leaveStatusLabel: Record<LeaveRequestStatus, string> = {
   draft: "Brouillon",
-  pending: "En attente",
+  pending: "En attente manager",
+  pending_manager: "En attente manager",
+  pending_hr: "En attente RH",
   approved: "Approuvé",
   rejected: "Refusé",
   cancelled: "Annulé",

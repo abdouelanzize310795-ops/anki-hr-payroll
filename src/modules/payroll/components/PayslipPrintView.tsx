@@ -1,6 +1,6 @@
-import { AnkibaPayLogo } from "@/components/brand/AnkibaPayLogo";
 import { Money } from "@/components/app/primitives";
 import type { PayslipDetail } from "@/modules/payroll/types";
+import { CompanyDocumentHeader } from "@/modules/companies/components/CompanyDocumentHeader";
 
 export function PayslipPrintView({ slip }: { slip: PayslipDetail }) {
   const earnings = slip.lines.filter((l) => l.kind === "earning");
@@ -9,28 +9,30 @@ export function PayslipPrintView({ slip }: { slip: PayslipDetail }) {
 
   return (
     <div className="payslip-print mx-auto max-w-3xl bg-[var(--color-background)] p-8 text-[var(--color-foreground)] print:max-w-none print:p-0">
-      <div className="flex items-start justify-between gap-4 border-b border-[var(--color-border)] pb-6">
-        <div>
-          <AnkibaPayLogo className="h-10 w-auto" />
-          <p className="mt-3 font-display text-lg font-semibold">{slip.company_name}</p>
-          <p className="text-xs text-muted-foreground">
-            {[slip.company_address, slip.company_city].filter(Boolean).join(" · ")}
-          </p>
-          {slip.company_tax_id && (
-            <p className="font-mono text-[10px] text-muted-foreground">NIF {slip.company_tax_id}</p>
-          )}
-        </div>
-        <div className="text-right">
-          <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-            Bulletin de paie
-          </p>
-          <p className="font-display text-xl font-bold">{slip.period_label}</p>
-          <p className="font-mono text-xs text-muted-foreground">{slip.payslip_number}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {slip.period_start} → {slip.period_end}
-          </p>
-        </div>
-      </div>
+      <CompanyDocumentHeader
+        company={{
+          legalName: slip.company_name || "Entreprise",
+          tradeName: slip.company_trade_name,
+          logoUrl: slip.company_logo_url,
+          address: slip.company_address,
+          city: slip.company_city,
+          region: slip.company_region,
+          phone: slip.company_phone,
+          email: slip.company_email,
+          taxId: slip.company_tax_id,
+          registrationNumber: slip.company_registration_number,
+        }}
+        documentTitle="Bulletin de paie"
+        documentSubtitle={slip.period_label}
+        rightMeta={
+          <>
+            <p className="font-mono text-xs text-muted-foreground">{slip.payslip_number}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {slip.period_start} → {slip.period_end}
+            </p>
+          </>
+        }
+      />
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <div>
@@ -42,6 +44,17 @@ export function PayslipPrintView({ slip }: { slip: PayslipDetail }) {
           )}
           {slip.employee_number && (
             <p className="font-mono text-xs text-muted-foreground">{slip.employee_number}</p>
+          )}
+          {(slip.worked_hours != null || slip.overtime_hours != null) && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Pointage : {Number(slip.worked_hours ?? 0).toFixed(1)} h normales
+              {Number(slip.overtime_hours ?? 0) > 0
+                ? ` · ${Number(slip.overtime_hours).toFixed(1)} h supp.`
+                : ""}
+              {slip.expected_hours != null
+                ? ` (attendu ${Number(slip.expected_hours).toFixed(1)} h)`
+                : ""}
+            </p>
           )}
         </div>
         <div className="rounded-xl bg-[var(--color-muted)]/40 p-4 sm:text-right">
@@ -68,10 +81,20 @@ export function PayslipPrintView({ slip }: { slip: PayslipDetail }) {
               <tr key={l.id} className="border-b border-[var(--color-border)]/60">
                 <td className="py-2">{l.label}</td>
                 <td className="py-2 font-mono text-xs">
-                  <Money value={l.basis_amount} currency={slip.currency_code} />
+                  {l.calc_method === "worked_hours" || l.calc_method === "overtime_hours"
+                    ? `${Number(l.basis_amount).toFixed(2)} h`
+                    : (
+                      <Money value={l.basis_amount} currency={slip.currency_code} />
+                    )}
                 </td>
                 <td className="py-2 font-mono text-xs">
-                  {l.calc_method.startsWith("percent") ? `${l.rate_applied} %` : "—"}
+                  {l.calc_method.startsWith("percent")
+                    ? `${l.rate_applied} %`
+                    : l.calc_method === "overtime_hours"
+                      ? `× ${l.rate_applied}`
+                      : l.calc_method === "worked_hours"
+                        ? `${l.rate_applied}`
+                        : "—"}
                 </td>
                 <td className="py-2 text-right font-mono">
                   <Money value={l.amount} currency={slip.currency_code} />

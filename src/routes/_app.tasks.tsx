@@ -62,6 +62,7 @@ function TasksPage() {
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [assigneeId, setAssigneeId] = useState<string>("");
   const [dueDate, setDueDate] = useState("");
+  const [estimatedMinutes, setEstimatedMinutes] = useState("");
 
   const lockedCompanyId = admin ? null : profileCompanyId;
   const effectiveCompanyId =
@@ -126,6 +127,7 @@ function TasksPage() {
           status: "todo",
           assigneeEmployeeId: assigneeId || null,
           dueDate: dueDate || "",
+          estimatedMinutes: estimatedMinutes ? Number(estimatedMinutes) : null,
         },
       });
       if (!result.ok) {
@@ -137,6 +139,7 @@ function TasksPage() {
       setDescription("");
       setAssigneeId("");
       setDueDate("");
+      setEstimatedMinutes("");
       await load();
     } finally {
       setBusy(false);
@@ -166,7 +169,7 @@ function TasksPage() {
       <PageHeader
         badge="Organisation"
         title="Tâches"
-        description="Suivi des actions RH et paie de l’équipe."
+        description="Actions RH et paie — les managers voient et assignent leur département."
         actions={
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
@@ -220,6 +223,16 @@ function TasksPage() {
                     <Label>Échéance</Label>
                     <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
                   </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>Durée estimée (minutes)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="Optionnel"
+                    value={estimatedMinutes}
+                    onChange={(e) => setEstimatedMinutes(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label>Assigné</Label>

@@ -159,7 +159,7 @@ export const getDashboardData = createServerFn({ method: "GET" })
     let leaveQuery = supabase
       .from("leave_requests")
       .select("id, start_date, end_date, days_count, created_at, employee_id, status")
-      .eq("status", "pending")
+      .in("status", ["pending", "pending_manager", "pending_hr"])
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(10);
@@ -294,9 +294,11 @@ export const getDashboardData = createServerFn({ method: "GET" })
       activity.push({
         who: name,
         what:
-          l.status === "pending"
-            ? `a demandé un congé (${l.days_count} j)`
-            : `congé ${l.status}`,
+          l.status === "pending" || l.status === "pending_manager"
+            ? `a demandé un congé (${l.days_count} j) — manager`
+            : l.status === "pending_hr"
+              ? `congé en validation RH (${l.days_count} j)`
+              : `congé ${l.status}`,
         when: relativeFr(l.created_at),
         init: initials(name),
       });

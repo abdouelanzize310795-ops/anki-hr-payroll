@@ -42,16 +42,29 @@ export const Route = createFileRoute("/_app/attendance")({ component: Attendance
 
 const appRouteApi = getRouteApi("/_app");
 
+function monthBounds(date = new Date()) {
+  const y = date.getFullYear();
+  const m = date.getMonth() + 1;
+  const from = `${y}-${String(m).padStart(2, "0")}-01`;
+  const last = new Date(y, m, 0).getDate();
+  const to = `${y}-${String(m).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+  return { from, to, label: date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) };
+}
+
 function AttendancePage() {
   const { auth } = appRouteApi.useRouteContext();
   const profileCompanyId = auth.profile?.company_id ?? null;
   const admin = isPlatformAdmin(auth);
+  const role = auth.profile?.role ?? "employee";
+  const isEmployee = role === "employee";
   const canManage =
-    admin || auth.profile?.role === "employer" || auth.profile?.role === "hr";
+    admin || role === "employer" || role === "hr";
 
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const month = useMemo(() => monthBounds(), []);
   const [companies, setCompanies] = useState<CompanyWithMeta[]>([]);
   const [employees, setEmployees] = useState<EmployeeWithRelations[]>([]);
+  const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
   const [companyFilter, setCompanyFilter] = useState<string>(profileCompanyId ?? "all");
   const [workDate, setWorkDate] = useState(today);
   const [records, setRecords] = useState<AttendanceWithRelations[]>([]);
@@ -71,10 +84,11 @@ function AttendancePage() {
     setLoading(true);
     setError(null);
     try {
+      const listArgs = isEmployee
+        ? { companyId: effectiveCompanyId, from: month.from, to: month.to }
+        : { companyId: effectiveCompanyId, workDate };
       const [rows, s, chart] = await Promise.all([
-        listAttendance({
-          data: { companyId: effectiveCompanyId, workDate },
-        }),
+        listAttendance({ data: listArgs }),
         attendanceStats({ data: { companyId: effectiveCompanyId, workDate } }),
         attendanceMonthSeries({ data: { companyId: effectiveCompanyId } }),
       ]);
@@ -105,13 +119,19 @@ function AttendancePage() {
         data: { companyId: effectiveCompanyId, status: "active" },
       });
       setEmployees(emps);
-      if (!clockEmployeeId && emps[0]) setClockEmployeeId(emps[0].id);
+      const mine = emps.find((e) => e.user_id === auth.user?.id) ?? (isEmployee ? emps[0] : undefined);
+      if (mine) setMyEmployeeId(mine.id);
+      if (isEmployee) {
+        if (mine) setClockEmployeeId(mine.id);
+      } else if (!clockEmployeeId && emps[0]) {
+        setClockEmployeeId(emps[0].id);
+      }
     })();
-  }, [effectiveCompanyId]);
+  }, [effectiveCompanyId, isEmployee, auth.user?.id]);
 
   useEffect(() => {
     void load();
-  }, [companyFilter, workDate, lockedCompanyId]);
+  }, [companyFilter, workDate, lockedCompanyId, isEmployee]);
 
   const handleUpsert = async (values: UpsertAttendanceInput) => {
     const result = await upsertAttendance({ data: values });
@@ -121,15 +141,16 @@ function AttendancePage() {
   };
 
   const handleClock = async (action: "in" | "out") => {
-    if (!effectiveCompanyId || !clockEmployeeId) {
-      setError("Sélectionnez une entreprise et un employé");
+    const employeeId = isEmployee ? (myEmployeeId ?? clockEmployeeId) : clockEmployeeId;
+    if (!effectiveCompanyId || !employeeId) {
+      setError(isEmployee ? "Fiche employé introuvable" : "Sélectionnez une entreprise et un employé");
       return;
     }
     setBusy(true);
     setError(null);
     try {
       const result = await clockAttendance({
-        data: { companyId: effectiveCompanyId, employeeId: clockEmployeeId, action },
+        data: { companyId: effectiveCompanyId, employeeId, action },
       });
       if (!result.ok) {
         setError(result.message);
@@ -161,12 +182,21 @@ function AttendancePage() {
     }
   };
 
+  const todayRecord = useMemo(
+    () => records.find((r) => r.work_date === today) ?? null,
+    [records, today],
+  );
+
   return (
     <>
       <PageHeader
         badge="Temps"
         title="Pointage"
-        description="Entrées / sorties, retards et heures travaillées (fuseau Comores)."
+        description={
+          isEmployee
+            ? "Vos entrées / sorties du mois (fuseau Comores)."
+            : "Entrées / sorties, retards et heures travaillées (fuseau Comores)."
+        }
         actions={
           <div className="flex flex-wrap gap-2">
             {canManage && (
@@ -175,34 +205,70 @@ function AttendancePage() {
                 Marquer absents
               </Button>
             )}
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="mr-1.5 h-4 w-4" />
-                  Saisie manuelle
+            {canManage && (
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Saisie manuelle
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle className="font-display">Enregistrement de présence</DialogTitle>
+                  </DialogHeader>
+                  <AttendanceForm
+                    lockedCompanyId={lockedCompanyId ?? effectiveCompanyId ?? null}
+                    defaultWorkDate={workDate}
+                    onSubmit={handleUpsert}
+                  />
+                </DialogContent>
+              </Dialog>
+            )}
+            {isEmployee && (
+              <>
+                <Button size="sm" disabled={busy || !myEmployeeId} onClick={() => void handleClock("in")}>
+                  <LogIn className="mr-1.5 h-4 w-4" />
+                  Entrée
                 </Button>
-              </DialogTrigger>
-              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle className="font-display">Enregistrement de présence</DialogTitle>
-                </DialogHeader>
-                <AttendanceForm
-                  lockedCompanyId={lockedCompanyId ?? effectiveCompanyId ?? null}
-                  defaultWorkDate={workDate}
-                  onSubmit={handleUpsert}
-                />
-              </DialogContent>
-            </Dialog>
+                <Button size="sm" variant="outline" disabled={busy || !myEmployeeId} onClick={() => void handleClock("out")}>
+                  <LogOut className="mr-1.5 h-4 w-4" />
+                  Sortie
+                </Button>
+              </>
+            )}
           </div>
         }
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Présents" value={String(stats.present)} icon={LogIn} accent="success" />
+        <StatCard
+          label={isEmployee ? "Jours présents" : "Présents"}
+          value={String(stats.present)}
+          icon={LogIn}
+          accent="success"
+        />
         <StatCard label="Retards" value={String(stats.late)} icon={Clock} accent="gold" />
         <StatCard label="Heures supp." value={`${stats.overtimeHours}h`} icon={Timer} accent="primary" />
-        <StatCard label="Absents" value={String(stats.absent)} icon={LogOut} accent="destructive" />
+        <StatCard
+          label={isEmployee ? "Jours absents" : "Absents"}
+          value={String(stats.absent)}
+          icon={LogOut}
+          accent="destructive"
+        />
       </div>
+
+      {isEmployee && todayRecord && (
+        <p className="mt-4 text-sm text-muted-foreground">
+          Aujourd’hui ({today}) : entrée{" "}
+          <span className="font-mono text-foreground">{todayRecord.check_in?.slice(0, 5) ?? "—"}</span>
+          {" · "}
+          sortie{" "}
+          <span className="font-mono text-foreground">{todayRecord.check_out?.slice(0, 5) ?? "—"}</span>
+          {" · "}
+          <StatusPill status={attendanceStatusToPill(todayRecord.status)} />
+        </p>
+      )}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         {admin && (
@@ -219,34 +285,38 @@ function AttendancePage() {
             </SelectContent>
           </Select>
         )}
-        <Input
-          type="date"
-          className="w-full sm:w-44"
-          value={workDate}
-          onChange={(e) => setWorkDate(e.target.value)}
-        />
-        {effectiveCompanyId && (
+        {!isEmployee && (
           <>
-            <Select value={clockEmployeeId} onValueChange={setClockEmployeeId}>
-              <SelectTrigger className="w-full sm:w-56">
-                <SelectValue placeholder="Employé à pointer" />
-              </SelectTrigger>
-              <SelectContent>
-                {employees.map((e) => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.first_name} {e.last_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button size="sm" disabled={busy || !clockEmployeeId} onClick={() => void handleClock("in")}>
-              <LogIn className="mr-1.5 h-4 w-4" />
-              Entrée
-            </Button>
-            <Button size="sm" variant="outline" disabled={busy || !clockEmployeeId} onClick={() => void handleClock("out")}>
-              <LogOut className="mr-1.5 h-4 w-4" />
-              Sortie
-            </Button>
+            <Input
+              type="date"
+              className="w-full sm:w-44"
+              value={workDate}
+              onChange={(e) => setWorkDate(e.target.value)}
+            />
+            {effectiveCompanyId && (
+              <>
+                <Select value={clockEmployeeId} onValueChange={setClockEmployeeId}>
+                  <SelectTrigger className="w-full sm:w-56">
+                    <SelectValue placeholder="Employé à pointer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((e) => (
+                      <SelectItem key={e.id} value={e.id}>
+                        {e.first_name} {e.last_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" disabled={busy || !clockEmployeeId} onClick={() => void handleClock("in")}>
+                  <LogIn className="mr-1.5 h-4 w-4" />
+                  Entrée
+                </Button>
+                <Button size="sm" variant="outline" disabled={busy || !clockEmployeeId} onClick={() => void handleClock("out")}>
+                  <LogOut className="mr-1.5 h-4 w-4" />
+                  Sortie
+                </Button>
+              </>
+            )}
           </>
         )}
       </div>
@@ -259,20 +329,27 @@ function AttendancePage() {
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <SectionCard title="Présences du jour" description={workDate}>
+          <SectionCard
+            title={isEmployee ? "Mes pointages du mois" : "Présences du jour"}
+            description={isEmployee ? month.label : workDate}
+          >
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement…</p>
             ) : records.length === 0 ? (
               <EmptyPlaceholder
                 title="Aucun pointage"
-                description="Pointez une entrée ou saisissez une présence manuellement."
+                description={
+                  isEmployee
+                    ? "Pointez votre entrée pour commencer la journée."
+                    : "Pointez une entrée ou saisissez une présence manuellement."
+                }
                 icon={Clock}
               />
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Employé</TableHead>
+                    {isEmployee ? <TableHead>Date</TableHead> : <TableHead>Employé</TableHead>}
                     <TableHead>Entrée</TableHead>
                     <TableHead>Sortie</TableHead>
                     <TableHead>Durée</TableHead>
@@ -283,8 +360,14 @@ function AttendancePage() {
                   {records.map((r) => (
                     <TableRow key={r.id}>
                       <TableCell>
-                        <div className="font-medium">{r.employee_name}</div>
-                        <div className="text-xs text-muted-foreground">{r.job_title}</div>
+                        {isEmployee ? (
+                          <div className="font-medium font-mono text-sm">{r.work_date}</div>
+                        ) : (
+                          <>
+                            <div className="font-medium">{r.employee_name}</div>
+                            <div className="text-xs text-muted-foreground">{r.job_title}</div>
+                          </>
+                        )}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
                         {r.check_in?.slice(0, 5) ?? "—"}
@@ -306,7 +389,10 @@ function AttendancePage() {
           </SectionCard>
         </div>
 
-        <SectionCard title="Heures moyennes" description="Mois en cours · moyenne par jour">
+        <SectionCard
+          title={isEmployee ? "Mes heures" : "Heures moyennes"}
+          description={isEmployee ? "Mois en cours · heures / jour" : "Mois en cours · moyenne par jour"}
+        >
           <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={series}>

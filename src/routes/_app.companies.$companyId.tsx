@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, getRouteApi } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app/AppShell";
 import { SectionCard, StatusPill } from "@/components/app/primitives";
@@ -11,22 +11,33 @@ import { ArrowLeft, Building2, Landmark } from "lucide-react";
 import {
   getCompany, listBranches, listDepartments, updateCompany,
 } from "@/modules/companies/company.functions";
-import { CompanyForm } from "@/modules/companies/components/CompanyForm";
+import { CompanyForm, type CompanyFormSubmit } from "@/modules/companies/components/CompanyForm";
+import { uploadCompanyLogoFile } from "@/modules/companies/upload-logo";
 import type { Branch, CompanyWithMeta, Department } from "@/modules/companies/types";
-import type { CreateCompanyInput } from "@/modules/companies/schemas";
+import { companyApprovalLabel } from "@/modules/companies/types";
+import { CompanyApprovalActions } from "@/modules/admin/components/CompanyApprovalActions";
+import { isPlatformAdmin } from "@/lib/auth/auth.functions";
+import { DepartmentManagersPanel } from "@/modules/employees/components/DepartmentManagersPanel";
 
 export const Route = createFileRoute("/_app/companies/$companyId")({
   component: CompanyDetailPage,
 });
 
+const appRouteApi = getRouteApi("/_app");
+
 function CompanyDetailPage() {
   const { companyId } = Route.useParams();
+  const { auth } = appRouteApi.useRouteContext();
+  const platformAdmin = isPlatformAdmin(auth);
   const [company, setCompany] = useState<CompanyWithMeta | null>(null);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  const canAssignDeptManagers =
+    platformAdmin || auth.profile?.role === "hr";
 
   const load = async () => {
     setLoading(true);
@@ -56,7 +67,7 @@ function CompanyDetailPage() {
     void load();
   }, [companyId]);
 
-  const handleUpdate = async (values: CreateCompanyInput) => {
+  const handleUpdate = async ({ values, logoFile }: CompanyFormSubmit) => {
     if (!company) return;
     const result = await updateCompany({
       data: {
@@ -65,6 +76,7 @@ function CompanyDetailPage() {
       },
     });
     if (!result.ok) throw new Error(result.message);
+    if (logoFile) await uploadCompanyLogoFile(company.id, logoFile);
     setSaved(true);
     await load();
     setTimeout(() => setSaved(false), 2500);
@@ -100,8 +112,21 @@ function CompanyDetailPage() {
           .filter(Boolean)
           .join(" · ") || "Paramètres de l’entité"}
         actions={
-          <div className="flex items-center gap-2">
-            <StatusPill status={company.is_active ? "Actif" : "En attente"} />
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPill
+              status={
+                companyApprovalLabel[company.approval_status] ??
+                (company.is_active ? "Actif" : "En attente")
+              }
+            />
+            {platformAdmin && (
+              <CompanyApprovalActions
+                companyId={company.id}
+                approvalStatus={company.approval_status}
+                onDone={() => void load()}
+                onError={setError}
+              />
+            )}
             <Button variant="outline" size="sm" asChild>
               <Link to="/companies"><ArrowLeft className="mr-1.5 h-4 w-4" />Liste</Link>
             </Button>
@@ -132,11 +157,13 @@ function CompanyDetailPage() {
           <SectionCard title="Informations générales" description="Identité légale et contact">
             <CompanyForm
               submitLabel="Enregistrer les modifications"
+              existingLogoUrl={company.logo_url}
               defaultValues={{
                 legalName: company.legal_name,
                 tradeName: company.trade_name ?? "",
                 sector: company.sector ?? "",
                 taxId: company.tax_id ?? "",
+                registrationNumber: company.registration_number ?? "",
                 email: company.email ?? "",
                 phone: company.phone ?? "",
                 addressLine1: company.address_line1 ?? "",
@@ -199,22 +226,10 @@ function CompanyDetailPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Départements">
-            {departments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                Aucun département pour l’instant. Ils pourront être créés depuis le module Employés.
-              </p>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                {departments.map((d) => (
-                  <li key={d.id} className="flex justify-between border-b border-border/60 py-2 last:border-0">
-                    <span className="font-medium">{d.name}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{d.code ?? ""}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </SectionCard>
+          <DepartmentManagersPanel
+            companyId={companyId}
+            canAssign={canAssignDeptManagers}
+          />
         </div>
       </div>
     </>

@@ -6,7 +6,7 @@ import {
   CalendarDays, Wallet, Calculator, GraduationCap, TrendingUp, ListTodo,
   FolderKanban, Laptop, BarChart3, Bell, Sparkles, Settings, ShieldCheck,
   CreditCard, Search, Command as CommandIcon, Sun, Moon, ChevronRight, LogOut,
-  Landmark,
+  Landmark, Headphones,
 } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -69,6 +69,7 @@ const primary: NavItem[] = [
 const workforce: NavItem[] = [
   { title: "Pointage", url: "/attendance", icon: Clock },
   { title: "Congés", url: "/leave", icon: CalendarDays },
+  { title: "Helpdesk", url: "/helpdesk", icon: Headphones },
   { title: "Paie", url: "/payroll", icon: Wallet },
   { title: "Comptabilité", url: "/accounting", icon: Calculator },
   { title: "Virements", url: "/transfers", icon: Landmark },
@@ -94,7 +95,22 @@ const system: NavItem[] = [
   { title: "Paramètres", url: "/settings", icon: Settings },
 ];
 
-const allNav = [...primary, ...workforce, ...growth, ...ops, ...system];
+/** Console SaaS — distinct from tenant RH workspace */
+const consoleOverview: NavItem[] = [
+  { title: "Vue plateforme", url: "/", icon: LayoutDashboard },
+  { title: "Console admin", url: "/admin", icon: ShieldCheck },
+];
+
+const consoleTenants: NavItem[] = [
+  { title: "Entreprises", url: "/companies", icon: Building2 },
+];
+
+const consoleAccount: NavItem[] = [
+  { title: "Notifications", url: "/notifications", icon: Bell },
+  { title: "Paramètres", url: "/settings", icon: Settings },
+];
+
+const allNav = [...primary, ...workforce, ...growth, ...ops, ...system, ...consoleOverview, ...consoleTenants, ...consoleAccount];
 
 const PLAN_SEAT_LIMIT = 100;
 
@@ -134,7 +150,7 @@ function NavSection({ label, items, currentPath }: { label: string; items: NavIt
   );
 }
 
-function BrandMark() {
+function BrandMark({ consoleMode }: { consoleMode?: boolean }) {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   return (
@@ -145,7 +161,7 @@ function BrandMark() {
         <div className="min-w-0">
           <AnkibaPayLogo variant="full-dark" className="h-11 w-auto max-w-[190px]" />
           <div className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-gold">
-            {brand.tagline}
+            {consoleMode ? "Console plateforme" : brand.tagline}
           </div>
         </div>
       )}
@@ -166,18 +182,18 @@ function AppSidebar({ currentPath }: { currentPath: string }) {
   const growthItems = filterNav(growth, allowed);
   const opsItems = filterNav(ops, allowed);
   const systemItems = filterNav(system, allowed);
+  const consoleOverviewItems = filterNav(consoleOverview, allowed);
+  const consoleTenantItems = filterNav(consoleTenants, allowed);
+  const consoleAccountItems = filterNav(consoleAccount, allowed);
 
   useEffect(() => {
-    if (role === "employee") {
+    if (admin || role === "employee") {
       setHeadcount(null);
       return;
     }
     void (async () => {
       try {
-        if (admin) {
-          const emps = await listEmployees({ data: { status: "active" } });
-          setHeadcount(emps.length);
-        } else if (companyId) {
+        if (companyId) {
           const emps = await listEmployees({
             data: { companyId, status: "active" },
           });
@@ -197,16 +213,35 @@ function AppSidebar({ currentPath }: { currentPath: string }) {
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
-      <SidebarHeader><BrandMark /></SidebarHeader>
+      <SidebarHeader><BrandMark consoleMode={admin} /></SidebarHeader>
       <SidebarContent className="gap-0">
-        <NavSection label="Vue d'ensemble" items={primaryItems} currentPath={currentPath} />
-        <NavSection label="Effectif & paie" items={workforceItems} currentPath={currentPath} />
-        <NavSection label="Développement" items={growthItems} currentPath={currentPath} />
-        <NavSection label="Opérations" items={opsItems} currentPath={currentPath} />
-        <NavSection label="Système" items={systemItems} currentPath={currentPath} />
+        {admin ? (
+          <>
+            <NavSection label="Console" items={consoleOverviewItems} currentPath={currentPath} />
+            <NavSection label="Tenants" items={consoleTenantItems} currentPath={currentPath} />
+            <NavSection label="Compte ops" items={consoleAccountItems} currentPath={currentPath} />
+          </>
+        ) : (
+          <>
+            <NavSection label="Vue d'ensemble" items={primaryItems} currentPath={currentPath} />
+            <NavSection label="Effectif & paie" items={workforceItems} currentPath={currentPath} />
+            <NavSection label="Développement" items={growthItems} currentPath={currentPath} />
+            <NavSection label="Opérations" items={opsItems} currentPath={currentPath} />
+            <NavSection label="Système" items={systemItems} currentPath={currentPath} />
+          </>
+        )}
       </SidebarContent>
       <SidebarFooter>
-        {role !== "employee" && (
+        {admin ? (
+          <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/50 p-3 text-xs text-sidebar-foreground/80 group-data-[collapsible=icon]:hidden">
+            <div className="mb-1 flex items-center gap-1.5 font-medium text-sidebar-foreground">
+              <ShieldCheck className="h-3.5 w-3.5 text-gold" /> Ops AnkibaPay
+            </div>
+            <div className="text-sidebar-foreground/60">
+              Validation tenants · supervision plateforme
+            </div>
+          </div>
+        ) : role !== "employee" ? (
           <Link
             to="/subscriptions"
             className="block rounded-xl border border-sidebar-border bg-sidebar-accent/50 p-3 text-xs text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:hidden"
@@ -226,7 +261,7 @@ function AppSidebar({ currentPath }: { currentPath: string }) {
               />
             </div>
           </Link>
-        )}
+        ) : null}
       </SidebarFooter>
     </Sidebar>
   );
@@ -284,8 +319,11 @@ function TopBar({ onOpenCommand }: { onOpenCommand: () => void }) {
     setSigningOut(true);
     try {
       await signOut();
+    } catch {
+      /* session may already be gone — still leave the app shell */
     } finally {
-      setSigningOut(false);
+      // Full navigation so router/auth context reset without a manual refresh
+      window.location.assign("/login");
     }
   };
 
@@ -358,8 +396,14 @@ function TopBar({ onOpenCommand }: { onOpenCommand: () => void }) {
             <DropdownMenuLabel>Mon compte</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild><Link to="/settings">Profil & paramètres</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/subscriptions">Abonnement</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link to="/ai">Assistant IA</Link></DropdownMenuItem>
+            {!admin && (
+              <DropdownMenuItem asChild><Link to="/subscriptions">Abonnement</Link></DropdownMenuItem>
+            )}
+            {admin ? (
+              <DropdownMenuItem asChild><Link to="/admin">Console admin</Link></DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem asChild><Link to="/ai">Assistant IA</Link></DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive"
@@ -409,6 +453,16 @@ function GlobalCommand({ open, setOpen }: { open: boolean; setOpen: (v: boolean)
           ))}
         </CommandGroup>
         <CommandGroup heading="Actions rapides">
+          {allowed.has("/admin") && (
+            <CommandItem onSelect={() => go("/admin")}>
+              <ShieldCheck className="mr-2 h-4 w-4" />File de validation
+            </CommandItem>
+          )}
+          {allowed.has("/companies") && role === "platform_admin" && (
+            <CommandItem onSelect={() => go("/companies")}>
+              <Building2 className="mr-2 h-4 w-4" />Liste des tenants
+            </CommandItem>
+          )}
           {allowed.has("/employees") && (
             <CommandItem onSelect={() => go("/employees")}>
               <UserPlus className="mr-2 h-4 w-4" />Ajouter un employé
@@ -429,6 +483,11 @@ function GlobalCommand({ open, setOpen }: { open: boolean; setOpen: (v: boolean)
               <CalendarDays className="mr-2 h-4 w-4" />Congés
             </CommandItem>
           )}
+          {allowed.has("/helpdesk") && (
+            <CommandItem onSelect={() => go("/helpdesk")}>
+              <Headphones className="mr-2 h-4 w-4" />Helpdesk
+            </CommandItem>
+          )}
           {allowed.has("/ai") && (
             <CommandItem onSelect={() => go("/ai")}>
               <Sparkles className="mr-2 h-4 w-4" />Assistant IA
@@ -442,6 +501,8 @@ function GlobalCommand({ open, setOpen }: { open: boolean; setOpen: (v: boolean)
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const auth = useAuthUser();
+  const admin = isPlatformAdmin(auth);
   const [cmdOpen, setCmdOpen] = useState(false);
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -467,7 +528,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </main>
         </div>
         <GlobalCommand open={cmdOpen} setOpen={setCmdOpen} />
-        <AiAssistant />
+        {!admin && <AiAssistant />}
       </div>
     </SidebarProvider>
   );

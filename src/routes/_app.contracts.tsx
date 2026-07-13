@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { getRouteApi } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/AppShell";
@@ -29,8 +29,17 @@ import type { CompanyWithMeta } from "@/modules/companies/types";
 import { isPlatformAdmin } from "@/lib/auth/auth.functions";
 
 export const Route = createFileRoute("/_app/contracts")({
-  component: ContractsPage,
+  component: ContractsLayout,
 });
+
+function ContractsLayout() {
+  const showingDetail = useRouterState({
+    select: (s) =>
+      s.location.pathname.startsWith("/contracts/") && s.location.pathname !== "/contracts",
+  });
+  if (showingDetail) return <Outlet />;
+  return <ContractsPage />;
+}
 
 const appRouteApi = getRouteApi("/_app");
 
@@ -108,7 +117,9 @@ function ContractsPage() {
     );
   }, [contracts, search]);
 
-  const canCreate = Boolean(lockedCompanyId || admin);
+  const canCreate =
+    Boolean(lockedCompanyId || admin) &&
+    (admin || auth.profile?.role === "employer" || auth.profile?.role === "hr");
 
   const handleCreate = async (values: CreateContractInput) => {
     if (!admin && profileCompanyId) values.companyId = profileCompanyId;

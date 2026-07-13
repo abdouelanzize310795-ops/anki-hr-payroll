@@ -1,4 +1,4 @@
-import { createFileRoute, Link, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute, Link, getRouteApi, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app/AppShell";
 import { EmptyPlaceholder, Money, SectionCard, StatCard, StatusPill } from "@/components/app/primitives";
@@ -25,7 +25,16 @@ import {
 import type { CompanyWithMeta } from "@/modules/companies/types";
 import { isPlatformAdmin } from "@/lib/auth/auth.functions";
 
-export const Route = createFileRoute("/_app/transfers")({ component: TransfersPage });
+export const Route = createFileRoute("/_app/transfers")({ component: TransfersLayout });
+
+function TransfersLayout() {
+  const showingDetail = useRouterState({
+    select: (s) =>
+      s.location.pathname.startsWith("/transfers/") && s.location.pathname !== "/transfers",
+  });
+  if (showingDetail) return <Outlet />;
+  return <TransfersPage />;
+}
 
 const appRouteApi = getRouteApi("/_app");
 

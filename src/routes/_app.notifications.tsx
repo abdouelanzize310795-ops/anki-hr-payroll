@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/app/AppShell";
 import { EmptyPlaceholder, SectionCard } from "@/components/app/primitives";
 import { Button } from "@/components/ui/button";
 import {
-  Bell, CheckCheck, Wallet, FileSignature, CalendarDays, Flag, Building2,
+  Bell, CheckCheck, Wallet, FileSignature, CalendarDays, Flag, Building2, Headphones,
 } from "lucide-react";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -12,6 +12,8 @@ import {
 import { listCompanies } from "@/modules/companies/company.functions";
 import {
   listNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
   type AppNotification,
 } from "@/modules/notifications/notification.functions";
 import type { CompanyWithMeta } from "@/modules/companies/types";
@@ -29,6 +31,7 @@ const kindIcon = {
   contract: FileSignature,
   attendance: Bell,
   task: Flag,
+  helpdesk: Headphones,
 } as const;
 
 const kindTint = {
@@ -37,6 +40,7 @@ const kindTint = {
   contract: "bg-primary-soft text-primary",
   attendance: "bg-success/10 text-success",
   task: "bg-destructive/10 text-destructive",
+  helpdesk: "bg-primary-soft text-primary",
 } as const;
 
 function NotificationsPage() {
@@ -90,6 +94,17 @@ function NotificationsPage() {
     const next = new Set(items.map((i) => i.id));
     setReadIds(next);
     localStorage.setItem("ap_notif_read", JSON.stringify([...next]));
+    void markAllNotificationsRead();
+  };
+
+  const markOneRead = (id: string) => {
+    const next = new Set(readIds);
+    next.add(id);
+    setReadIds(next);
+    localStorage.setItem("ap_notif_read", JSON.stringify([...next]));
+    if (!id.startsWith("pay-") && !id.startsWith("ctr-") && !id.startsWith("task-")) {
+      void markNotificationRead({ data: { id } });
+    }
   };
 
   const visible = items.map((i) => ({
@@ -161,7 +176,7 @@ function NotificationsPage() {
                     <div className="mt-0.5 text-[11px] text-muted-foreground">{n.when}</div>
                   </div>
                   <Button size="sm" variant="outline" asChild>
-                    <a href={n.href}>Ouvrir</a>
+                    <a href={n.href} onClick={() => markOneRead(n.id)}>Ouvrir</a>
                   </Button>
                 </div>
               );

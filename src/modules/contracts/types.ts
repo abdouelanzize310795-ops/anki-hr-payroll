@@ -49,6 +49,11 @@ export type ContractDetail = ContractWithRelations & {
   company_city?: string | null;
   company_region?: string | null;
   company_tax_id?: string | null;
+  company_trade_name?: string | null;
+  company_registration_number?: string | null;
+  company_phone?: string | null;
+  company_email?: string | null;
+  company_logo_url?: string | null;
 };
 
 export const contractTypeLabel: Record<ContractType, string> = {

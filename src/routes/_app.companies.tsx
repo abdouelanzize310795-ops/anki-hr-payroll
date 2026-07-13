@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/app/AppShell";
 import { SectionCard, StatusPill, StatCard } from "@/components/app/primitives";
@@ -14,13 +14,25 @@ import {
 import { Building2, Plus, Search, MapPin, Layers3 } from "lucide-react";
 import { getRouteApi } from "@tanstack/react-router";
 import { listCompanies, createCompany } from "@/modules/companies/company.functions";
-import { CompanyForm } from "@/modules/companies/components/CompanyForm";
+import { CompanyForm, type CompanyFormSubmit } from "@/modules/companies/components/CompanyForm";
+import { uploadCompanyLogoFile } from "@/modules/companies/upload-logo";
 import type { CompanyWithMeta } from "@/modules/companies/types";
-import type { CreateCompanyInput } from "@/modules/companies/schemas";
+import { companyApprovalLabel } from "@/modules/companies/types";
+import { CompanyApprovalActions } from "@/modules/admin/components/CompanyApprovalActions";
+import { isPlatformAdmin } from "@/lib/auth/auth.functions";
 
 export const Route = createFileRoute("/_app/companies")({
-  component: CompaniesPage,
+  component: CompaniesLayout,
 });
+
+function CompaniesLayout() {
+  const showingDetail = useRouterState({
+    select: (s) =>
+      s.location.pathname.startsWith("/companies/") && s.location.pathname !== "/companies",
+  });
+  if (showingDetail) return <Outlet />;
+  return <CompaniesPage />;
+}
 
 const appRouteApi = getRouteApi("/_app");
 
@@ -36,8 +48,9 @@ function companyInitials(name: string) {
 
 function CompaniesPage() {
   const { auth } = appRouteApi.useRouteContext();
+  const platformAdmin = isPlatformAdmin(auth);
   const canCreateMore =
-    auth.profile?.role === "platform_admin" || !auth.profile?.company_id;
+    platformAdmin || !auth.profile?.company_id;
 
   const [companies, setCompanies] = useState<CompanyWithMeta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -72,9 +85,10 @@ function CompaniesPage() {
     );
   }, [companies, query]);
 
-  const handleCreate = async (values: CreateCompanyInput) => {
+  const handleCreate = async ({ values, logoFile }: CompanyFormSubmit) => {
     const result = await createCompany({ data: values });
     if (!result.ok) throw new Error(result.message);
+    if (logoFile) await uploadCompanyLogoFile(result.data.id, logoFile);
     setOpen(false);
     await load();
   };
@@ -184,14 +198,29 @@ function CompaniesPage() {
                     </TableCell>
                     <TableCell>{c.branches_count ?? 0}</TableCell>
                     <TableCell>
-                      <StatusPill status={c.is_active ? "Actif" : "En attente"} />
+                      <StatusPill
+                        status={
+                          companyApprovalLabel[c.approval_status] ??
+                          (c.is_active ? "Actif" : "En attente")
+                        }
+                      />
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link to="/companies/$companyId" params={{ companyId: c.id }}>
-                          Ouvrir
-                        </Link>
-                      </Button>
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        {platformAdmin && (
+                          <CompanyApprovalActions
+                            companyId={c.id}
+                            approvalStatus={c.approval_status}
+                            onDone={() => void load()}
+                            onError={setError}
+                          />
+                        )}
+                        <Button variant="outline" size="sm" asChild>
+                          <Link to="/companies/$companyId" params={{ companyId: c.id }}>
+                            Ouvrir
+                          </Link>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

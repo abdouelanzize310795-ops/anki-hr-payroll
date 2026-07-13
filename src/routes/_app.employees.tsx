@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { getRouteApi } from "@tanstack/react-router";
 import { PageHeader } from "@/components/app/AppShell";
@@ -13,12 +13,13 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Plus, Search, UserCheck, UserX, UserCog, Building2 } from "lucide-react";
+import { Users, Plus, Search, UserCheck, UserX, UserCog, Building2, Upload } from "lucide-react";
 import { listCompanies } from "@/modules/companies/company.functions";
 import {
-  createEmployee, employeeStats, listEmployees,
+  createEmployee, employeeStats, importEmployeesCsv, listEmployees,
 } from "@/modules/employees/employee.functions";
 import { EmployeeForm } from "@/modules/employees/components/EmployeeForm";
+import { DepartmentManagersPanel } from "@/modules/employees/components/DepartmentManagersPanel";
 import {
   employeeStatusLabel,
   type EmployeeStatus,
@@ -29,8 +30,17 @@ import type { CompanyWithMeta } from "@/modules/companies/types";
 import { isPlatformAdmin } from "@/lib/auth/auth.functions";
 
 export const Route = createFileRoute("/_app/employees")({
-  component: EmployeesPage,
+  component: EmployeesLayout,
 });
+
+function EmployeesLayout() {
+  const showingDetail = useRouterState({
+    select: (s) =>
+      s.location.pathname.startsWith("/employees/") && s.location.pathname !== "/employees",
+  });
+  if (showingDetail) return <Outlet />;
+  return <EmployeesPage />;
+}
 
 const appRouteApi = getRouteApi("/_app");
 
@@ -59,11 +69,13 @@ function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const effectiveCompanyId =
     companyFilter === "all" ? undefined : companyFilter;
 
   const lockedCompanyId = admin ? null : profileCompanyId;
+  const importCompanyId = lockedCompanyId ?? (companyFilter !== "all" ? companyFilter : null);
 
   const load = async () => {
     setLoading(true);
@@ -113,6 +125,9 @@ function EmployeesPage() {
   }, [employees, search]);
 
   const canCreate = Boolean(lockedCompanyId || admin);
+  const isHr = auth.profile?.role === "hr";
+  const canAssignDeptManagers = isHr || admin;
+  const deptCompanyId = lockedCompanyId ?? (companyFilter !== "all" ? companyFilter : null);
 
   const handleCreate = async (values: CreateEmployeeInput) => {
     if (!admin && profileCompanyId) {
@@ -122,6 +137,86 @@ function EmployeesPage() {
     if (!result.ok) throw new Error(result.message);
     setOpen(false);
     await load();
+  };
+
+  const parseCsvLine = (line: string): string[] => {
+    const cells: string[] = [];
+    let cur = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+        continue;
+      }
+      if (ch === "," && !inQuotes) {
+        cells.push(cur.trim());
+        cur = "";
+        continue;
+      }
+      cur += ch;
+    }
+    cells.push(cur.trim());
+    return cells;
+  };
+
+  const handleImportCsv = async (file: File) => {
+    if (!importCompanyId) {
+      setError("Sélectionnez une entreprise avant l’import CSV");
+      return;
+    }
+    setImporting(true);
+    setError(null);
+    try {
+      const text = await file.text();
+      const lines = text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+      if (lines.length < 2) {
+        setError("CSV vide ou sans données");
+        return;
+      }
+      const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase().replace(/\s+/g, "_"));
+      const idx = (name: string) => headers.indexOf(name);
+      const rows = lines.slice(1).map((line) => {
+        const cols = parseCsvLine(line);
+        const get = (name: string) => {
+          const i = idx(name);
+          return i >= 0 ? cols[i] ?? "" : "";
+        };
+        return {
+          firstName: get("first_name"),
+          lastName: get("last_name"),
+          email: get("email") || undefined,
+          jobTitle: get("job_title") || undefined,
+          baseSalary: get("base_salary") ? Number(get("base_salary")) : undefined,
+          hireDate: get("hire_date") || undefined,
+          departmentName: get("department_name") || undefined,
+        };
+      }).filter((r) => r.firstName && r.lastName);
+
+      if (!rows.length) {
+        setError("Aucune ligne valide (first_name, last_name requis)");
+        return;
+      }
+
+      const result = await importEmployeesCsv({
+        data: { companyId: importCompanyId, rows },
+      });
+      if (result.errors.length) {
+        setError(
+          `Importé ${result.imported}. Erreurs : ${result.errors.slice(0, 5).join(" · ")}${
+            result.errors.length > 5 ? ` (+${result.errors.length - 5})` : ""
+          }`,
+        );
+      }
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Import CSV impossible");
+    } finally {
+      setImporting(false);
+    }
   };
 
   if (!canCreate && !loading && companies.length === 0 && !profileCompanyId) {
@@ -150,21 +245,43 @@ function EmployeesPage() {
         description="Fiches administratives, postes et salaires de base (KMF)."
         actions={
           canCreate ? (
-            <Dialog open={open} onOpenChange={setOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm"><Plus className="mr-1.5 h-4 w-4" />Ajouter un employé</Button>
-              </DialogTrigger>
-              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle className="font-display">Nouvel employé</DialogTitle>
-                </DialogHeader>
-                <EmployeeForm
-                  lockedCompanyId={lockedCompanyId}
-                  submitLabel="Créer l’employé"
-                  onSubmit={handleCreate}
-                />
-              </DialogContent>
-            </Dialog>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={!importCompanyId || importing}
+                onClick={() => document.getElementById("employee-csv-input")?.click()}
+              >
+                <Upload className="mr-1.5 h-4 w-4" />
+                {importing ? "Import…" : "Import CSV"}
+              </Button>
+              <input
+                id="employee-csv-input"
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void handleImportCsv(file);
+                }}
+              />
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm"><Plus className="mr-1.5 h-4 w-4" />Ajouter un employé</Button>
+                </DialogTrigger>
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="font-display">Nouvel employé</DialogTitle>
+                  </DialogHeader>
+                  <EmployeeForm
+                    lockedCompanyId={lockedCompanyId}
+                    submitLabel="Créer l’employé"
+                    onSubmit={handleCreate}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
           ) : null
         }
       />
@@ -175,6 +292,15 @@ function EmployeesPage() {
         <StatCard label="En congé" value={String(stats.onLeave)} icon={UserX} accent="gold" />
         <StatCard label="Onboarding" value={String(stats.onboarding)} icon={UserCog} accent="primary" />
       </div>
+
+      {deptCompanyId && (canAssignDeptManagers || auth.profile?.role === "employer") && (
+        <div className="mt-6">
+          <DepartmentManagersPanel
+            companyId={deptCompanyId}
+            canAssign={canAssignDeptManagers}
+          />
+        </div>
+      )}
 
       <div className="mt-6">
         <SectionCard

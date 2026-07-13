@@ -21,6 +21,7 @@ import {
   leaveStats,
   listLeaveBalances,
   listLeaveRequests,
+  reviewMedicalLeave,
   transitionLeaveRequest,
 } from "@/modules/leave/leave.functions";
 import { LeaveRequestForm } from "@/modules/leave/components/LeaveRequestForm";
@@ -52,8 +53,11 @@ function LeavePage() {
   const { auth } = appRouteApi.useRouteContext();
   const profileCompanyId = auth.profile?.company_id ?? null;
   const admin = isPlatformAdmin(auth);
-  const canManage =
-    admin || auth.profile?.role === "employer" || auth.profile?.role === "hr";
+  const role = auth.profile?.role;
+  const canManageHr =
+    admin || role === "employer" || role === "hr";
+  const canActAsManager =
+    canManageHr || role === "manager";
 
   const [companies, setCompanies] = useState<CompanyWithMeta[]>([]);
   const [companyFilter, setCompanyFilter] = useState<string>(profileCompanyId ?? "all");
@@ -135,6 +139,23 @@ function LeavePage() {
     }
   };
 
+  const handleMedicalReview = async (
+    id: string,
+    medicalStatus: "justified" | "rejected",
+  ) => {
+    setActingId(id);
+    try {
+      const result = await reviewMedicalLeave({ data: { id, medicalStatus } });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      await load();
+    } finally {
+      setActingId(null);
+    }
+  };
+
   return (
     <>
       <PageHeader
@@ -193,7 +214,8 @@ function LeavePage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Tous les statuts</SelectItem>
-            <SelectItem value="pending">En attente</SelectItem>
+            <SelectItem value="pending_manager">En attente manager</SelectItem>
+            <SelectItem value="pending_hr">En attente RH</SelectItem>
             <SelectItem value="approved">Approuvé</SelectItem>
             <SelectItem value="rejected">Refusé</SelectItem>
             <SelectItem value="cancelled">Annulé</SelectItem>
@@ -225,7 +247,7 @@ function LeavePage() {
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <SectionCard title="Demandes" description="Workflow : soumission → validation RH.">
+          <SectionCard title="Demandes" description="Workflow : employé → manager → RH → notification.">
             {loading ? (
               <p className="text-sm text-muted-foreground">Chargement…</p>
             ) : requests.length === 0 ? (
@@ -236,7 +258,18 @@ function LeavePage() {
               />
             ) : (
               <div className="divide-y divide-border">
-                {requests.map((r) => (
+                {requests.map((r) => {
+                  const awaitingManager =
+                    r.status === "pending_manager" || r.status === "pending";
+                  const awaitingHr = r.status === "pending_hr";
+                  const showManagerActions = canActAsManager && awaitingManager;
+                  const showHrActions = canManageHr && awaitingHr;
+                  const canCancel =
+                    r.status === "draft" ||
+                    awaitingManager ||
+                    (canManageHr && (awaitingHr || r.status === "approved"));
+
+                  return (
                   <div key={r.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center">
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-primary-soft text-xs text-primary">
@@ -254,13 +287,63 @@ function LeavePage() {
                         {r.start_date} → {r.end_date} ({r.days_count} j)
                         {r.company_name && admin ? ` · ${r.company_name}` : ""}
                       </div>
+                      {r.acting_manager_name && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Remplaçant : {r.acting_manager_name}
+                        </p>
+                      )}
                       {r.reason && (
                         <p className="mt-0.5 truncate text-xs text-muted-foreground">{r.reason}</p>
+                      )}
+                      {r.medical_status && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Certificat :{" "}
+                          {r.medical_status === "pending"
+                            ? "en attente"
+                            : r.medical_status === "justified"
+                              ? "justifié"
+                              : "rejeté"}
+                          {r.attachment_url ? (
+                            <>
+                              {" · "}
+                              <a
+                                href={r.attachment_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary hover:underline"
+                              >
+                                voir
+                              </a>
+                            </>
+                          ) : null}
+                        </p>
                       )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusPill status={leaveStatusToPill(r.status)} />
-                      {canManage && r.status === "pending" && (
+                      {canManageHr && r.medical_status === "pending" && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={actingId === r.id}
+                            onClick={() => void handleMedicalReview(r.id, "justified")}
+                          >
+                            <Check className="mr-1 h-3.5 w-3.5" />
+                            Certificat OK
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={actingId === r.id}
+                            onClick={() => void handleMedicalReview(r.id, "rejected")}
+                          >
+                            <X className="mr-1 h-3.5 w-3.5" />
+                            Certificat KO
+                          </Button>
+                        </>
+                      )}
+                      {showManagerActions && (
                         <>
                           <Button
                             size="sm"
@@ -269,7 +352,7 @@ function LeavePage() {
                             onClick={() => void handleTransition(r.id, "approve")}
                           >
                             <Check className="mr-1 h-3.5 w-3.5" />
-                            Approuver
+                            {canManageHr ? "Valider (manager)" : "Approuver"}
                           </Button>
                           <Button
                             size="sm"
@@ -282,7 +365,29 @@ function LeavePage() {
                           </Button>
                         </>
                       )}
-                      {(r.status === "pending" || r.status === "draft" || (canManage && r.status === "approved")) && (
+                      {showHrActions && (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={actingId === r.id}
+                            onClick={() => void handleTransition(r.id, "approve")}
+                          >
+                            <Check className="mr-1 h-3.5 w-3.5" />
+                            Valider RH
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={actingId === r.id}
+                            onClick={() => void handleTransition(r.id, "reject")}
+                          >
+                            <X className="mr-1 h-3.5 w-3.5" />
+                            Refuser
+                          </Button>
+                        </>
+                      )}
+                      {canCancel && (
                         <Button
                           size="sm"
                           variant="ghost"
@@ -295,7 +400,8 @@ function LeavePage() {
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </SectionCard>

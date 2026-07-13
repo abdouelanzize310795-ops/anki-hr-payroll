@@ -1,6 +1,7 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { AppRole } from "@/lib/auth/types";
 import { clockActionSchema, upsertAttendanceSchema } from "./schemas";
 import {
   computeWorkedMinutes,
@@ -11,12 +12,42 @@ import {
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; message: string };
 
-async function requireUserId(): Promise<string> {
+type AttendanceActor = {
+  userId: string;
+  role: AppRole;
+  companyId: string | null;
+  employeeId: string | null;
+  /** Employees are scoped to their own rows. */
+  selfOnly: boolean;
+};
+
+const requireAttendanceActor = createServerOnlyFn(async (): Promise<AttendanceActor> => {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) throw new Error("Authentification requise");
-  return data.user.id;
-}
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role, company_id")
+    .eq("id", data.user.id)
+    .maybeSingle();
+
+  const role = (profile?.role ?? "employee") as AppRole;
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("id")
+    .eq("user_id", data.user.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  return {
+    userId: data.user.id,
+    role,
+    companyId: profile?.company_id ?? null,
+    employeeId: emp?.id ?? null,
+    selfOnly: role === "employee",
+  };
+});
 
 function mapRecord(row: AttendanceRecord): AttendanceRecord {
   return {
@@ -47,7 +78,7 @@ export const listAttendance = createServerFn({ method: "GET" })
       .optional(),
   )
   .handler(async ({ data }): Promise<AttendanceWithRelations[]> => {
-    await requireUserId();
+    const actor = await requireAttendanceActor();
     const supabase = createSupabaseServerClient();
     const workDate = data?.workDate ?? new Date().toISOString().slice(0, 10);
 
@@ -58,7 +89,24 @@ export const listAttendance = createServerFn({ method: "GET" })
       .order("work_date", { ascending: false });
 
     if (data?.companyId) query = query.eq("company_id", data.companyId);
-    if (data?.from && data?.to) {
+    if (actor.selfOnly) {
+      if (!actor.employeeId) return [];
+      query = query.eq("employee_id", actor.employeeId);
+      if (data?.from && data?.to) {
+        query = query.gte("work_date", data.from).lte("work_date", data.to);
+      } else if (!data?.workDate) {
+        // Default employee view: current month
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth() + 1;
+        const from = `${y}-${String(m).padStart(2, "0")}-01`;
+        const last = new Date(y, m, 0).getDate();
+        const to = `${y}-${String(m).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+        query = query.gte("work_date", from).lte("work_date", to);
+      } else {
+        query = query.eq("work_date", workDate);
+      }
+    } else if (data?.from && data?.to) {
       query = query.gte("work_date", data.from).lte("work_date", data.to);
     } else {
       query = query.eq("work_date", workDate);
@@ -108,15 +156,30 @@ export const attendanceStats = createServerFn({ method: "GET" })
       .optional(),
   )
   .handler(async ({ data }) => {
-    await requireUserId();
+    const actor = await requireAttendanceActor();
     const supabase = createSupabaseServerClient();
     const workDate = data?.workDate ?? new Date().toISOString().slice(0, 10);
 
     let query = supabase
       .from("attendance_records")
       .select("status, worked_minutes")
-      .eq("work_date", workDate)
       .is("deleted_at", null);
+
+    if (actor.selfOnly) {
+      if (!actor.employeeId) {
+        return { present: 0, late: 0, absent: 0, overtimeHours: 0 };
+      }
+      query = query.eq("employee_id", actor.employeeId);
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth() + 1;
+      const from = `${y}-${String(m).padStart(2, "0")}-01`;
+      const last = new Date(y, m, 0).getDate();
+      const to = `${y}-${String(m).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+      query = query.gte("work_date", from).lte("work_date", to);
+    } else {
+      query = query.eq("work_date", workDate);
+    }
 
     if (data?.companyId) query = query.eq("company_id", data.companyId);
 
@@ -127,9 +190,20 @@ export const attendanceStats = createServerFn({ method: "GET" })
     const present = list.filter((r) => r.status === "present" || r.status === "remote").length;
     const late = list.filter((r) => r.status === "late").length;
     const absent = list.filter((r) => r.status === "absent").length;
+    let standardDayMinutes = 8 * 60;
+    if (data?.companyId) {
+      const { data: company } = await supabase
+        .from("companies")
+        .select("standard_hours_per_day")
+        .eq("id", data.companyId)
+        .maybeSingle();
+      const hours = Number(company?.standard_hours_per_day ?? 8);
+      if (hours > 0) standardDayMinutes = hours * 60;
+    }
+
     const overtimeMinutes = list.reduce((acc, r) => {
       const mins = Number(r.worked_minutes ?? 0);
-      return acc + Math.max(0, mins - 8 * 60);
+      return acc + Math.max(0, mins - standardDayMinutes);
     }, 0);
 
     return {
@@ -149,7 +223,7 @@ export const attendanceMonthSeries = createServerFn({ method: "GET" })
     }).optional(),
   )
   .handler(async ({ data }) => {
-    await requireUserId();
+    const actor = await requireAttendanceActor();
     const supabase = createSupabaseServerClient();
     const now = new Date();
     const year = data?.year ?? now.getFullYear();
@@ -166,6 +240,12 @@ export const attendanceMonthSeries = createServerFn({ method: "GET" })
       .is("deleted_at", null);
 
     if (data?.companyId) query = query.eq("company_id", data.companyId);
+    if (actor.selfOnly) {
+      if (!actor.employeeId) {
+        return Array.from({ length: lastDay }, (_, i) => ({ d: i + 1, h: 0 }));
+      }
+      query = query.eq("employee_id", actor.employeeId);
+    }
 
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
@@ -185,15 +265,27 @@ export const attendanceMonthSeries = createServerFn({ method: "GET" })
     return Array.from({ length: lastDay }, (_, i) => {
       const d = i + 1;
       const cur = byDay.get(d);
-      const avgH = cur && cur.count > 0 ? Math.round((cur.total / cur.count / 60) * 10) / 10 : 0;
-      return { d, h: avgH };
+      // Employee: personal hours that day; managers: average across team
+      const h =
+        actor.selfOnly
+          ? cur && cur.total > 0
+            ? Math.round((cur.total / 60) * 10) / 10
+            : 0
+          : cur && cur.count > 0
+            ? Math.round((cur.total / cur.count / 60) * 10) / 10
+            : 0;
+      return { d, h };
     });
   });
 
 export const upsertAttendance = createServerFn({ method: "POST" })
   .validator(upsertAttendanceSchema)
   .handler(async ({ data }): Promise<ActionResult<AttendanceRecord>> => {
-    const userId = await requireUserId();
+    const actor = await requireAttendanceActor();
+    if (actor.selfOnly) {
+      return { ok: false, message: "Saisie manuelle réservée à la RH" };
+    }
+    const userId = actor.userId;
     const supabase = createSupabaseServerClient();
 
     const checkIn = normalizeTime(data.checkIn);
@@ -238,12 +330,21 @@ export const upsertAttendance = createServerFn({ method: "POST" })
 export const clockAttendance = createServerFn({ method: "POST" })
   .validator(clockActionSchema)
   .handler(async ({ data }): Promise<ActionResult<AttendanceRecord>> => {
-    await requireUserId();
+    const actor = await requireAttendanceActor();
     const supabase = createSupabaseServerClient();
 
+    const employeeId =
+      actor.selfOnly ? actor.employeeId : data.employeeId;
+    if (!employeeId) {
+      return { ok: false, message: "Fiche employé introuvable pour votre compte" };
+    }
+
+    const companyId = data.companyId || actor.companyId;
+    if (!companyId) return { ok: false, message: "Entreprise introuvable" };
+
     const { data: row, error } = await supabase.rpc("clock_attendance", {
-      p_company_id: data.companyId,
-      p_employee_id: data.employeeId,
+      p_company_id: companyId,
+      p_employee_id: employeeId,
       p_action: data.action,
       p_at: data.at ? new Date(data.at).toISOString() : new Date().toISOString(),
     });
@@ -255,7 +356,11 @@ export const clockAttendance = createServerFn({ method: "POST" })
 export const markAbsentForActive = createServerFn({ method: "POST" })
   .validator(z.object({ companyId: z.string().uuid(), workDate: z.string().optional() }))
   .handler(async ({ data }): Promise<ActionResult<{ created: number }>> => {
-    const userId = await requireUserId();
+    const actor = await requireAttendanceActor();
+    if (actor.selfOnly || (actor.role !== "employer" && actor.role !== "hr" && actor.role !== "platform_admin")) {
+      return { ok: false, message: "Action réservée à la RH" };
+    }
+    const userId = actor.userId;
     const supabase = createSupabaseServerClient();
     const workDate = data.workDate ?? new Date().toISOString().slice(0, 10);
 

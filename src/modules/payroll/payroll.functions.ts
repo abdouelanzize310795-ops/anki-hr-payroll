@@ -29,7 +29,12 @@ async function requireUserId(): Promise<string> {
 }
 
 function mapComponent(row: PayrollComponent): PayrollComponent {
-  return { ...row, rate_value: Number(row.rate_value) };
+  return {
+    ...row,
+    rate_value: Number(row.rate_value),
+    subject_to_igr: row.subject_to_igr ?? true,
+    subject_to_retirement: row.subject_to_retirement ?? true,
+  };
 }
 
 function mapRun(row: PayrollRun): PayrollRun {
@@ -50,6 +55,9 @@ function mapPayslip(row: Payslip): Payslip {
     deduction_amount: Number(row.deduction_amount),
     net_amount: Number(row.net_amount),
     employer_contribution_amount: Number(row.employer_contribution_amount),
+    worked_hours: row.worked_hours == null ? null : Number(row.worked_hours),
+    overtime_hours: row.overtime_hours == null ? null : Number(row.overtime_hours),
+    expected_hours: row.expected_hours == null ? null : Number(row.expected_hours),
   };
 }
 
@@ -91,6 +99,10 @@ export const updatePayrollComponent = createServerFn({ method: "POST" })
     if (data.rateValue !== undefined) patch.rate_value = data.rateValue;
     if (data.calcMethod !== undefined) patch.calc_method = data.calcMethod;
     if (data.isActive !== undefined) patch.is_active = data.isActive;
+    if (data.subjectToIgr !== undefined) patch.subject_to_igr = data.subjectToIgr;
+    if (data.subjectToRetirement !== undefined) {
+      patch.subject_to_retirement = data.subjectToRetirement;
+    }
 
     const { data: existing } = await supabase
       .from("payroll_components")
@@ -128,6 +140,8 @@ export const createPayrollComponent = createServerFn({ method: "POST" })
         kind: data.kind,
         calc_method: data.calcMethod,
         rate_value: data.rateValue,
+        subject_to_igr: data.subjectToIgr ?? true,
+        subject_to_retirement: data.subjectToRetirement ?? true,
         sort_order: data.kind === "earning" ? 50 : data.kind === "deduction" ? 150 : 250,
       })
       .select("*")
@@ -356,17 +370,13 @@ export const getPayslip = createServerFn({ method: "GET" })
 
     const slip = mapPayslip(row as Payslip);
 
-    const [{ data: lines }, { data: company }, { data: run }] = await Promise.all([
+    const [{ data: lines }, { data: letterhead }, { data: run }] = await Promise.all([
       supabase
         .from("payslip_lines")
         .select("*")
         .eq("payslip_id", slip.id)
         .order("sort_order"),
-      supabase
-        .from("companies")
-        .select("legal_name, address_line1, city, tax_id")
-        .eq("id", slip.company_id)
-        .maybeSingle(),
+      supabase.rpc("get_company_letterhead", { p_company_id: slip.company_id }),
       supabase
         .from("payroll_runs")
         .select("label, period_start, period_end, period_year, period_month")
@@ -374,13 +384,32 @@ export const getPayslip = createServerFn({ method: "GET" })
         .maybeSingle(),
     ]);
 
+    const company = (letterhead ?? null) as {
+      legal_name?: string;
+      trade_name?: string | null;
+      address_line1?: string | null;
+      city?: string | null;
+      region?: string | null;
+      tax_id?: string | null;
+      registration_number?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      logo_url?: string | null;
+    } | null;
+
     return {
       ...slip,
       lines: ((lines ?? []) as PayslipLine[]).map(mapLine),
       company_name: company?.legal_name ?? null,
       company_address: company?.address_line1 ?? null,
       company_city: company?.city ?? null,
+      company_region: company?.region ?? null,
       company_tax_id: company?.tax_id ?? null,
+      company_trade_name: company?.trade_name ?? null,
+      company_registration_number: company?.registration_number ?? null,
+      company_phone: company?.phone ?? null,
+      company_email: company?.email ?? null,
+      company_logo_url: company?.logo_url ?? null,
       period_label: run
         ? periodLabel(run.period_year, run.period_month)
         : null,
@@ -390,3 +419,61 @@ export const getPayslip = createServerFn({ method: "GET" })
   });
 
 export type { PayrollRunStatus };
+
+export const listMyPayslips = createServerFn({ method: "GET" }).handler(
+  async (): Promise<
+    Array<{
+      id: string;
+      payslip_number: string | null;
+      net_amount: number;
+      gross_amount: number;
+      currency_code: string;
+      period_label: string;
+      created_at: string;
+    }>
+  > => {
+    await requireUserId();
+    const supabase = createSupabaseServerClient();
+
+    const { data: emp } = await supabase
+      .from("employees")
+      .select("id")
+      .eq("user_id", (await supabase.auth.getUser()).data.user!.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (!emp) return [];
+
+    const { data: slips, error } = await supabase
+      .from("payslips")
+      .select("id, payslip_number, net_amount, gross_amount, currency_code, payroll_run_id, created_at")
+      .eq("employee_id", emp.id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(24);
+
+    if (error) throw new Error(error.message);
+    if (!slips?.length) return [];
+
+    const runIds = [...new Set(slips.map((s) => s.payroll_run_id))];
+    const { data: runs } = await supabase
+      .from("payroll_runs")
+      .select("id, label, period_month, period_year")
+      .in("id", runIds);
+
+    const runMap = new Map((runs ?? []).map((r) => [r.id, r]));
+
+    return slips.map((s) => {
+      const run = runMap.get(s.payroll_run_id);
+      return {
+        id: s.id,
+        payslip_number: s.payslip_number,
+        net_amount: Number(s.net_amount),
+        gross_amount: Number(s.gross_amount),
+        currency_code: s.currency_code,
+        period_label: run?.label ?? `${run?.period_month}/${run?.period_year}`,
+        created_at: s.created_at,
+      };
+    });
+  },
+);

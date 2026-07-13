@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { redirect } from "@tanstack/react-router";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AuthUser, Profile } from "@/lib/auth/types";
+import type { AuthUser, CompanyAccess, Profile } from "@/lib/auth/types";
 
 const credentialsSchema = z.object({
   email: z.string().email("Adresse e-mail invalide"),
@@ -29,6 +29,21 @@ async function loadProfile(userId: string): Promise<Profile | null> {
   return data as Profile | null;
 }
 
+async function loadCompanyAccess(companyId: string): Promise<CompanyAccess | null> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("companies")
+    .select(
+      "id, legal_name, is_active, approval_status, subscription_status, subscription_plan, subscription_paid_at, payment_reference, payment_method, rejection_reason",
+    )
+    .eq("id", companyId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data as CompanyAccess;
+}
+
 async function resolveAuthUser(): Promise<AuthUser | null> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
@@ -36,18 +51,21 @@ async function resolveAuthUser(): Promise<AuthUser | null> {
   if (error || !data.user) return null;
 
   const profile = await loadProfile(data.user.id);
-
-  // Fallback: role in app_metadata (not user_metadata) if profile row lags
   const metaRole = data.user.app_metadata?.role;
+
   if (
     profile &&
     metaRole === "platform_admin" &&
     profile.role !== "platform_admin"
   ) {
+    const company = profile.company_id
+      ? await loadCompanyAccess(profile.company_id)
+      : null;
     return {
       id: data.user.id,
       email: data.user.email ?? "",
       profile: { ...profile, role: "platform_admin" },
+      company,
     };
   }
 
@@ -65,22 +83,37 @@ async function resolveAuthUser(): Promise<AuthUser | null> {
         avatar_url: null,
         locale: "fr-KM",
         is_active: true,
+        must_change_password: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         deleted_at: null,
       },
+      company: null,
     };
   }
+
+  const company = profile?.company_id
+    ? await loadCompanyAccess(profile.company_id)
+    : null;
 
   return {
     id: data.user.id,
     email: data.user.email ?? "",
     profile,
+    company,
   };
 }
 
 export function isPlatformAdmin(user: AuthUser | null | undefined): boolean {
   return user?.profile?.role === "platform_admin";
+}
+
+export function isCompanyApproved(user: AuthUser | null | undefined): boolean {
+  if (isPlatformAdmin(user)) return true;
+  return (
+    user?.company?.approval_status === "approved" &&
+    user?.company?.is_active === true
+  );
 }
 
 export const getAuthSession = createServerFn({ method: "GET" }).handler(async (): Promise<AuthUser | null> => {
@@ -150,8 +183,11 @@ export const signUpWithPassword = createServerFn({ method: "POST" })
 
 export const signOut = createServerFn({ method: "POST" }).handler(async () => {
   const supabase = createSupabaseServerClient();
-  await supabase.auth.signOut();
-  throw redirect({ to: "/login" });
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    throw new Error(error.message);
+  }
+  return { ok: true as const };
 });
 
 const updateProfileSchema = z.object({
@@ -184,6 +220,54 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     await supabase.auth.updateUser({
       data: { full_name: data.fullName.trim() },
     });
+
+    return { ok: true };
+  });
+
+const changePasswordSchema = z
+  .object({
+    newPassword: z.string().min(8, "Au moins 8 caractères"),
+    confirmPassword: z.string().min(8, "Au moins 8 caractères"),
+  })
+  .superRefine((val, ctx) => {
+    if (val.newPassword !== val.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Les mots de passe ne correspondent pas",
+        path: ["confirmPassword"],
+      });
+    }
+  });
+
+/** First-login / forced password change for provisioned accounts. */
+export const changePasswordFirstLogin = createServerFn({ method: "POST" })
+  .validator(changePasswordSchema)
+  .handler(async ({ data }): Promise<{ ok: true } | { ok: false; message: string }> => {
+    const supabase = createSupabaseServerClient();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      return { ok: false, message: "Authentification requise" };
+    }
+
+    const { error: pwdError } = await supabase.auth.updateUser({
+      password: data.newPassword,
+    });
+    if (pwdError) {
+      return { ok: false, message: pwdError.message };
+    }
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        must_change_password: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", authData.user.id)
+      .is("deleted_at", null);
+
+    if (profileError) {
+      return { ok: false, message: profileError.message };
+    }
 
     return { ok: true };
   });

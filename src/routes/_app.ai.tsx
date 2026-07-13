@@ -16,10 +16,10 @@ export const Route = createFileRoute("/_app/ai")({ component: AiPage });
 const appRouteApi = getRouteApi("/_app");
 
 const skills = [
-  { icon: FileText, t: "Contrats", d: "État des contrats draft / envoyés / signés." },
-  { icon: Wand2, t: "Paie", d: "Dernier cycle, brut / net, masse salariale." },
-  { icon: MessageSquare, t: "Congés", d: "Demandes en attente et périodes approuvées." },
-  { icon: Search, t: "Effectif", d: "Nombre d’employés actifs et aperçu." },
+  { icon: Wand2, t: "Guides", d: "Comment créer un ticket, pointer, demander un congé…" },
+  { icon: Search, t: "Effectif", d: "Actifs, en congé, aperçu de l’équipe." },
+  { icon: MessageSquare, t: "Congés", d: "Files manager / RH et absents du jour." },
+  { icon: FileText, t: "Helpdesk", d: "Tickets ouverts et qui les traite." },
 ];
 
 type Msg = { role: "user" | "assistant"; text: string };
@@ -27,19 +27,35 @@ type Msg = { role: "user" | "assistant"; text: string };
 function AiPage() {
   const { auth } = appRouteApi.useRouteContext();
   const admin = isPlatformAdmin(auth);
+  const role = auth.profile?.role ?? "employee";
+  const isEmployee = role === "employee";
   const companyId = admin ? undefined : auth.profile?.company_id ?? undefined;
 
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [hints, setHints] = useState([
-    "Effectif actif",
-    "Résumé de la paie",
-    "Qui est en congé ?",
-  ]);
+  const [hints, setHints] = useState(
+    isEmployee
+      ? [
+          "Comment créer un ticket ?",
+          "Comment pointer ?",
+          "Comment demander un congé ?",
+          "Mon pointage",
+          "Mes congés",
+        ]
+      : [
+          "Comment créer un ticket ?",
+          "Comment pointer ?",
+          "Comment demander un congé ?",
+          "Effectif actif",
+          "Tickets helpdesk ouverts",
+        ],
+  );
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      text: "Bonjour — je réponds à partir de vos données AnkibaPay (effectif, congés, paie, contrats).",
+      text: isEmployee
+        ? "Bonjour — demandez « Comment créer un ticket ? » ou consultez votre pointage, congés, tickets et bulletin."
+        : "Bonjour — guides pas-à-pas (« Comment… ») et données live (effectif, congés, présence, paie, helpdesk).",
     },
   ]);
 
@@ -73,12 +89,16 @@ function AiPage() {
       <PageHeader
         badge="IA"
         title="Assistant AnkibaPay"
-        description="Copilote RH / paie basé sur vos données réelles (MVP règles métier)."
+        description={
+          isEmployee
+            ? "Guides pas-à-pas + vos données (pointage, congés, tickets, bulletin)."
+            : "Guides plateforme + données live RH / paie / helpdesk."
+        }
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Questions posées" value={String(userTurns)} icon={MessageSquare} accent="primary" />
         <StatCard label="Réponses" value={String(Math.max(0, messages.length - 1))} icon={FileText} accent="gold" />
-        <StatCard label="Mode" value="Données live" icon={Zap} accent="success" />
+        <StatCard label="Mode" value="Guides + live" icon={Zap} accent="success" />
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -94,9 +114,18 @@ function AiPage() {
                       : "mr-8 rounded-xl border border-border bg-card px-3 py-2 text-sm"
                   }
                 >
-                  {m.text.split("**").map((part, idx) =>
-                    idx % 2 === 1 ? <strong key={idx}>{part}</strong> : <span key={idx}>{part}</span>,
-                  )}
+                  {m.text.split("\n").map((line, lineIdx, lines) => (
+                    <span key={lineIdx}>
+                      {line.split("**").map((part, idx) =>
+                        idx % 2 === 1 ? (
+                          <strong key={idx}>{part}</strong>
+                        ) : (
+                          <span key={idx}>{part}</span>
+                        ),
+                      )}
+                      {lineIdx < lines.length - 1 ? <br /> : null}
+                    </span>
+                  ))}
                 </div>
               ))}
             </div>
@@ -114,7 +143,7 @@ function AiPage() {
             </div>
             <div className="flex items-end gap-2">
               <Textarea
-                placeholder="Ex. Résumé de la paie de ce mois…"
+                placeholder="Ex. Comment créer un ticket ?"
                 rows={2}
                 className="resize-none"
                 value={input}
@@ -157,7 +186,7 @@ function AiPage() {
           </div>
           <p className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5" />
-            Pas de LLM externe — réponses calculées depuis Supabase.
+            Guides intégrés + réponses calculées depuis Supabase.
           </p>
         </SectionCard>
       </div>

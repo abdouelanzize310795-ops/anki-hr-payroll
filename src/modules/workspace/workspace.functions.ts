@@ -96,7 +96,9 @@ export const getMyWorkspace = createServerFn({ method: "GET" }).handler(
         ...l,
         days_count: Number(l.days_count),
       }));
-      pendingLeaves = (leaves ?? []).filter((l) => l.status === "pending").length;
+      pendingLeaves = (leaves ?? []).filter((l) =>
+        ["pending", "pending_manager", "pending_hr"].includes(l.status),
+      ).length;
 
       const { count: taskCount } = await supabase
         .from("hr_tasks")
@@ -144,11 +146,15 @@ export const getMyWorkspace = createServerFn({ method: "GET" }).handler(
     let teamHeadcount = 0;
 
     if ((role === "manager" || role === "employer" || role === "hr") && companyId) {
+      const pendingStatuses =
+        role === "manager"
+          ? (["pending", "pending_manager"] as const)
+          : (["pending", "pending_manager", "pending_hr"] as const);
       const { data: teamLeaves } = await supabase
         .from("leave_requests")
         .select("id, start_date, end_date, days_count, employee_id, status")
         .eq("company_id", companyId)
-        .eq("status", "pending")
+        .in("status", [...pendingStatuses])
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(8);

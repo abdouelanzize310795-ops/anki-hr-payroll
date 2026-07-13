@@ -3,8 +3,8 @@ import { AnkibaPayLogo } from "@/components/brand/AnkibaPayLogo";
 import { brand } from "@/lib/brand";
 import { getAuthSession, isPlatformAdmin } from "@/lib/auth/auth.functions";
 import { createCompany } from "@/modules/companies/company.functions";
-import { CompanyForm } from "@/modules/companies/components/CompanyForm";
-import type { CreateCompanyInput } from "@/modules/companies/schemas";
+import { CompanyForm, type CompanyFormSubmit } from "@/modules/companies/components/CompanyForm";
+import { uploadCompanyLogoFile } from "@/modules/companies/upload-logo";
 
 export const Route = createFileRoute("/onboarding")({
   beforeLoad: async () => {
@@ -24,12 +24,15 @@ export const Route = createFileRoute("/onboarding")({
 function OnboardingPage() {
   const navigate = useNavigate();
 
-  const handleCreate = async (values: CreateCompanyInput) => {
+  const handleCreate = async ({ values, logoFile }: CompanyFormSubmit) => {
     const result = await createCompany({ data: values });
     if (!result.ok) {
       throw new Error(result.message);
     }
-    await navigate({ to: "/companies" });
+    if (logoFile) {
+      await uploadCompanyLogoFile(result.data.id, logoFile);
+    }
+    await navigate({ to: "/subscriptions" });
   };
 
   return (
@@ -50,13 +53,13 @@ function OnboardingPage() {
         </div>
 
         <div className="card-elevated rounded-2xl p-6 sm:p-8">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-reef">Étape 1 / 1</p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-reef">Étape 1 / 2</p>
           <h1 className="mt-2 font-display text-2xl font-bold text-primary sm:text-3xl">
             Configurez votre entreprise
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Ces informations alimentent les contrats, bulletins de paie et ordres de virement.
-            Vous serez automatiquement défini comme employeur de cette entreprise.
+            Ensuite vous choisirez un abonnement et paierez via M&apos;Vola Comores. Un
+            administrateur activera votre compte sous 24&nbsp;h.
           </p>
           <div className="ridge-divider mt-4" aria-hidden />
 
