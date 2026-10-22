@@ -17,7 +17,7 @@ import {
 export const Route = createFileRoute("/_app/company-access")({
   beforeLoad: ({ context }) => {
     if (isPlatformAdmin(context.auth) || isCompanyApproved(context.auth)) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
   },
   component: CompanyAccessPage,
@@ -178,7 +178,7 @@ function CompanyAccessPage() {
             <ShieldCheck className="mb-3 h-8 w-8 text-primary" />
             <h2 className="font-display text-lg font-semibold">Compte validé</h2>
             <Button className="mt-4" asChild>
-              <Link to="/">Accéder au tableau de bord</Link>
+              <Link to="/dashboard">Accéder au tableau de bord</Link>
             </Button>
           </div>
         )}

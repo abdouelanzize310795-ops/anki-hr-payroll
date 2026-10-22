@@ -60,9 +60,15 @@ function PayslipPage() {
                   Cycle
                 </Link>
               </Button>
-              <Button size="sm" onClick={() => window.print()}>
+              <Button variant="outline" size="sm" onClick={() => window.print()}>
                 <Printer className="mr-1.5 h-4 w-4" />
                 Imprimer
+              </Button>
+              <Button size="sm" asChild>
+                <a href={`/api/payslips/${slip.id}/pdf`}>
+                  <FileText className="mr-1.5 h-4 w-4" />
+                  Télécharger le PDF
+                </a>
               </Button>
             </div>
           }

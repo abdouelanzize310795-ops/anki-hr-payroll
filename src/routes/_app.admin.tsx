@@ -23,7 +23,7 @@ import { CompanyApprovalActions } from "@/modules/admin/components/CompanyApprov
 export const Route = createFileRoute("/_app/admin")({
   beforeLoad: ({ context }) => {
     if (!isPlatformAdmin(context.auth)) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
   },
   component: AdminPage,
@@ -82,7 +82,7 @@ function AdminPage() {
       <PageHeader
         badge="Plateforme"
         title="Super Admin"
-        description="Validez les entreprises après paiement et suivez tous les tenants AnkibaPay."
+        description="Validez les entreprises après paiement et suivez tous les tenants Mshahara."
         actions={
           <Button variant="outline" size="sm" asChild>
             <Link to="/companies">

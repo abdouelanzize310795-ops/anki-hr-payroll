@@ -88,7 +88,7 @@ function AiPage() {
     <>
       <PageHeader
         badge="IA"
-        title="Assistant AnkibaPay"
+        title="Assistant Mshahara"
         description={
           isEmployee
             ? "Guides pas-à-pas + vos données (pointage, congés, tickets, bulletin)."

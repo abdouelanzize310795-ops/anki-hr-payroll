@@ -27,7 +27,7 @@ import {
 } from "@/modules/companies/types";
 import { CompanyApprovalActions } from "@/modules/admin/components/CompanyApprovalActions";
 
-export const Route = createFileRoute("/_app/")({
+export const Route = createFileRoute("/_app/dashboard")({
   component: DashboardPage,
 });
 
@@ -457,7 +457,7 @@ function PlatformAdminHome({
       <PageHeader
         badge="Console plateforme"
         title={`Bonjour, ${name}`}
-        description="Pilotage SaaS AnkibaPay — validation des entreprises et santé des tenants."
+        description="Pilotage SaaS Mshahara — validation des entreprises et santé des tenants."
         actions={
           <>
             <Button variant="outline" size="sm" asChild>

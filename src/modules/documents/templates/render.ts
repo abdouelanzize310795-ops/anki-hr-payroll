@@ -155,7 +155,7 @@ export function renderTemplateHtml(
         ? `<p class="note">${escapeHtml(fillTemplateText(template.note, ctx))}</p>`
         : ""
     }
-    <p class="footer">${escapeHtml(displayName)} — document généré via AnkibaPay. À valider avant usage officiel.</p>
+    <p class="footer">${escapeHtml(displayName)} — document généré via Mshahara. À valider avant usage officiel.</p>
   </article>
 </body>
 </html>`;

@@ -1,5 +1,5 @@
 /**
- * Smoke test AnkibaPay — auth + RLS + lecture données
+ * Smoke test Mshahara — auth + RLS + lecture données
  * Usage: node scripts/smoke-test.mjs
  */
 import { createClient } from "@supabase/supabase-js";

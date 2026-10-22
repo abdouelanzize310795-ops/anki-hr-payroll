@@ -2,21 +2,21 @@ import { cn } from "@/lib/utils";
 
 type LogoVariant = "full" | "full-dark" | "icon";
 
-type AnkibaPayLogoProps = {
+type MshaharaLogoProps = {
   variant?: LogoVariant;
   className?: string;
   title?: string;
 };
 
 /**
- * Official AnkibaPay mark — perforated validation stamp + Karthala ridge.
+ * Official Mshahara mark — perforated validation stamp + Karthala ridge.
  * Extracted from Charte graphique v1.0 (SVG).
  */
-export function AnkibaPayLogo({
+export function MshaharaLogo({
   variant = "full",
   className,
-  title = "AnkibaPay",
-}: AnkibaPayLogoProps) {
+  title = "Mshahara",
+}: MshaharaLogoProps) {
   if (variant === "icon") {
     return (
       <svg
@@ -50,7 +50,7 @@ export function AnkibaPayLogo({
   }
 
   const onDark = variant === "full-dark";
-  const wordAnkiba = onDark ? "#FFFFFF" : "#0E4C56";
+  const wordMsha = onDark ? "#FFFFFF" : "#0E4C56";
   const outerFill = onDark ? "#0E4C56" : "#FFFFFF";
   const outerStroke = onDark ? "#F3EFE3" : "#0E4C56";
   const innerFill = onDark ? "#F3EFE3" : "#0E4C56";
@@ -90,10 +90,10 @@ export function AnkibaPayLogo({
           fontFamily="Fraunces, Georgia, serif"
           fontWeight="700"
           fontSize="42"
-          fill={wordAnkiba}
+          fill={wordMsha}
         >
-          Ankiba
-          <tspan fill="#E8A93B">Pay</tspan>
+          Msha
+          <tspan fill="#E8A93B">hara</tspan>
         </text>
         <polyline
           points="128,82 168,82 182,70 200,90 218,66 240,82 380,82"

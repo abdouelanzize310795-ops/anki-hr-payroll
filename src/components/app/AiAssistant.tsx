@@ -112,7 +112,7 @@ export function AiAssistant() {
                 <Sparkles className="h-4 w-4 text-primary-foreground" />
               </div>
               <div>
-                <div className="font-display text-sm font-semibold">Assistant AnkibaPay</div>
+                <div className="font-display text-sm font-semibold">Assistant Mshahara</div>
                 <div className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                   <span className="h-1.5 w-1.5 rounded-full bg-success" /> Guides + données
                 </div>

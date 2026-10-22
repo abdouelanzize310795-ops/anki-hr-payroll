@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getPublicEnv } from "@/lib/supabase/env";
+import { publicObjectUrl } from "@/lib/db/storage";
 import {
   createCompanySchema,
   prepareLogoUploadSchema,
@@ -27,8 +27,7 @@ function sanitizeFileName(name: string): string {
 }
 
 function publicLogoUrl(path: string): string {
-  const { VITE_SUPABASE_URL } = getPublicEnv();
-  return `${VITE_SUPABASE_URL}/storage/v1/object/public/${LOGO_BUCKET}/${path}`;
+  return publicObjectUrl(LOGO_BUCKET, path);
 }
 
 export const listCountries = createServerFn({ method: "GET" }).handler(async (): Promise<Country[]> => {

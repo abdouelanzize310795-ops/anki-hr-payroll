@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:16
+    container_name: mshahara-db
+    environment:
+      POSTGRES_DB: mshahara
+      POSTGRES_USER: mshahara
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mshahara}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mshahara -d mshahara"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    build: .
+    container_name: mshahara-web
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8090:8080"
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgres://mshahara:${POSTGRES_PASSWORD:-mshahara}@db:5432/mshahara
+      UPLOADS_DIR: /data/uploads
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - uploads:/data/uploads
+      - .:/app
+      - web-node-modules:/app/node_modules
+    restart: unless-stopped
+
+  mobile-build:
+    build:
+      context: ./apps/employee-mobile
+      dockerfile: Dockerfile.android
+    container_name: mshahara-mobile-build
+    profiles: ["mobile"]
+    cpuset: "0-3"
+    volumes:
+      - ./apps/employee-mobile/dist:/out
+      - gradle-cache:/gradle-cache
+      - android-ndk:/opt/android-sdk/ndk
+
+volumes:
+  web-node-modules:
+  pgdata:
+  uploads:
+  gradle-cache:
+  android-ndk:

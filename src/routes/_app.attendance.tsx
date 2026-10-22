@@ -28,6 +28,7 @@ import {
   upsertAttendance,
 } from "@/modules/attendance/attendance.functions";
 import { AttendanceForm } from "@/modules/attendance/components/AttendanceForm";
+import { SecureAttendancePanel } from "@/modules/attendance/components/SecureAttendancePanel";
 import {
   attendanceStatusToPill,
   formatMinutes,
@@ -412,6 +413,12 @@ function AttendancePage() {
           </div>
         </SectionCard>
       </div>
+
+      {canManage && effectiveCompanyId ? (
+        <div className="mt-6">
+          <SecureAttendancePanel companyId={effectiveCompanyId} />
+        </div>
+      ) : null}
     </>
   );
 }

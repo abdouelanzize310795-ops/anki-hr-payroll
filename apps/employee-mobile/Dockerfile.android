@@ -1,0 +1,26 @@
+# Builds a standalone release APK of the Mshahara employee app.
+FROM eclipse-temurin:17-jdk
+
+ENV ANDROID_HOME=/opt/android-sdk \
+    ANDROID_SDK_ROOT=/opt/android-sdk \
+    GRADLE_USER_HOME=/gradle-cache \
+    PATH=/opt/android-sdk/cmdline-tools/latest/bin:/opt/android-sdk/platform-tools:/opt/node/bin:$PATH
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl unzip xz-utils git \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://nodejs.org/dist/v22.11.0/node-v22.11.0-linux-x64.tar.xz -o /tmp/node.tar.xz \
+ && mkdir -p /opt/node && tar -xJf /tmp/node.tar.xz -C /opt/node --strip-components=1 && rm /tmp/node.tar.xz
+
+RUN curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/tools.zip \
+ && mkdir -p $ANDROID_HOME/cmdline-tools && unzip -q /tmp/tools.zip -d $ANDROID_HOME/cmdline-tools \
+ && mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest && rm /tmp/tools.zip \
+ && yes | sdkmanager --licenses > /dev/null \
+ && sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm install --no-audit --no-fund
+COPY . .
+
+CMD ["sh", "-c", "cd android && chmod +x gradlew && ./gradlew --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a -Dorg.gradle.jvmargs=-Xmx2g assembleRelease && mkdir -p /out && cp app/build/outputs/apk/release/app-release.apk /out/Mshahara.apk && echo APK pret: /out/Mshahara.apk"]

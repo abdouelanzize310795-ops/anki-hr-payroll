@@ -1,0 +1,8 @@
+node_modules
+apps
+.output
+.wrangler
+.tanstack
+.git
+.env*
+screenshots

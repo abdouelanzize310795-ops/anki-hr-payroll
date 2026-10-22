@@ -99,6 +99,6 @@ export const HR_ACCESS = {
   cannot: [
     "Créer un autre compte RH (réservé à l’employeur)",
     "Promouvoir quelqu’un en employeur",
-    "Accéder à la console plateforme AnkibaPay",
+    "Accéder à la console plateforme Mshahara",
   ],
 } as const;

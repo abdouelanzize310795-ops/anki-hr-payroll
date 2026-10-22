@@ -27,7 +27,6 @@ import {
   payrollStats,
   payrollTrend,
 } from "@/modules/payroll/payroll.functions";
-import { PayrollComponentsPanel } from "@/modules/payroll/components/PayrollComponentsPanel";
 import {
   MONTHS_FR,
   payrollRunStatusPill,
@@ -249,31 +248,12 @@ function EmployerPayrollHome() {
         actions={
           <>
             {canManage && (
-              <Dialog open={openConfig} onOpenChange={setOpenConfig}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!effectiveCompanyId}
-                    title={!effectiveCompanyId ? "Sélectionnez une entreprise" : undefined}
-                  >
-                    <Settings2 className="mr-1.5 h-4 w-4" />
-                    Composants
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle className="font-display">Composants de paie</DialogTitle>
-                  </DialogHeader>
-                  {effectiveCompanyId && (
-                    <PayrollComponentsPanel
-                      companyId={effectiveCompanyId}
-                      components={components}
-                      onChanged={load}
-                    />
-                  )}
-                </DialogContent>
-              </Dialog>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/payroll/template">
+                  <Settings2 className="mr-1.5 h-4 w-4" />
+                  Bulletin & rubriques
+                </Link>
+              </Button>
             )}
             {canManage && (
               <Dialog open={openRun} onOpenChange={setOpenRun}>

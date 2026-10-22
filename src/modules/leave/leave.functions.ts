@@ -29,8 +29,43 @@ function mapRequest(row: LeaveRequest): LeaveRequest {
 }
 
 function mapType(row: LeaveType): LeaveType {
-  return { ...row, default_entitlement_days: Number(row.default_entitlement_days) };
+  return {
+    ...row,
+    default_entitlement_days: Number(row.default_entitlement_days),
+    monthly_accrual_days: Number(row.monthly_accrual_days ?? 0),
+    max_carryover_days: row.max_carryover_days == null ? null : Number(row.max_carryover_days),
+  };
 }
+
+/** Employer rule: how a leave type is earned (e.g. 2.5 days per month) and carried over. */
+export const setLeaveTypeAccrual = createServerFn({ method: "POST" })
+  .validator(
+    z
+      .object({
+        leaveTypeId: z.string().uuid(),
+        accrualMode: z.enum(["annual", "monthly"]),
+        monthlyAccrualDays: z.number().min(0).max(31),
+        annualDays: z.number().min(0).max(366),
+        maxCarryoverDays: z.number().min(0).max(366).nullable(),
+      })
+      .refine((v) => v.accrualMode === "annual" || v.monthlyAccrualDays > 0, {
+        message: "Indiquez le nombre de jours acquis par mois",
+        path: ["monthlyAccrualDays"],
+      }),
+  )
+  .handler(async ({ data }): Promise<ActionResult<LeaveType>> => {
+    await requireUserId();
+    const supabase = createSupabaseServerClient();
+    const { data: row, error } = await supabase.rpc("set_leave_type_accrual", {
+      p_leave_type_id: data.leaveTypeId,
+      p_accrual_mode: data.accrualMode,
+      p_monthly_accrual_days: data.monthlyAccrualDays,
+      p_annual_days: data.annualDays,
+      p_max_carryover_days: data.maxCarryoverDays,
+    });
+    if (error || !row) return { ok: false, message: error?.message ?? "Enregistrement impossible" };
+    return { ok: true, data: mapType(row as LeaveType) };
+  });
 
 export const ensureLeaveTypes = createServerFn({ method: "POST" })
   .validator(z.object({ companyId: z.string().uuid() }))

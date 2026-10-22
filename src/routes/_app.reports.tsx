@@ -62,7 +62,7 @@ function ReportsPage() {
       <PageHeader
         badge="Analytique"
         title="Rapports"
-        description="Effectif, paie et présence — données live AnkibaPay."
+        description="Effectif, paie et présence — données live Mshahara."
         actions={
           <Button variant="outline" size="sm" asChild>
             <Link to="/payroll"><BarChart3 className="mr-1.5 h-4 w-4" />Paie</Link>
