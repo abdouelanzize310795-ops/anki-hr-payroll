@@ -11,6 +11,10 @@ export default defineConfig({
     server: {
       // The whole project is mounted in Docker: skip folders the web app never imports.
       watch: { ignored: ["**/apps/**", "**/.output/**", "**/.wrangler/**", "**/screenshots/**"] },
+      // Public demo tunnels (npx localtunnel --port 8090).
+      allowedHosts: [".loca.lt"],
+      // Never serve local secrets/test credentials from the dev server.
+      fs: { deny: [".env", ".env.*", "*.local", "*.{crt,pem,key}", "db/**", "docker-compose.yml"] },
     },
   },
   tanstackStart: {

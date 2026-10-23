@@ -2,6 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   ArrowRight,
+  Building2,
+  ClipboardCheck,
+  FileDown,
+  LayoutTemplate,
+  MapPin,
+  QrCode,
+  Scale,
+  Timer,
   Banknote,
   BarChart3,
   Briefcase,
@@ -19,6 +27,8 @@ import {
 } from "lucide-react";
 import { MshaharaLogo } from "@/components/brand/MshaharaLogo";
 import { getAuthSession } from "@/lib/auth/auth.functions";
+import { PayslipRenderer } from "@/modules/payroll/components/PayslipRenderer";
+import { SAMPLE_PAYSLIP, type PayslipLayout } from "@/modules/payroll/template.types";
 
 export const Route = createFileRoute("/")({
   loader: async () => ({ auth: await getAuthSession() }),
@@ -27,7 +37,8 @@ export const Route = createFileRoute("/")({
 
 const nav = [
   { label: "Fonctionnalités", href: "#fonctionnalites" },
-  { label: "Comment ça marche", href: "#etapes" },
+  { label: "Pointage sécurisé", href: "#pointage" },
+  { label: "Bulletins", href: "#bulletins" },
   { label: "Application mobile", href: "#mobile" },
   { label: "Tarifs", href: "#tarifs" },
   { label: "FAQ", href: "#faq" },
@@ -36,18 +47,48 @@ const nav = [
 const features = [
   {
     icon: Banknote,
-    title: "Paie en quelques clics",
-    text: "Bulletins calculés automatiquement à partir des heures pointées, des primes et des retenues paramétrées par votre entreprise.",
+    title: "Paie automatique",
+    text: "Bulletins calculés à partir des heures pointées, des primes et des retenues, avec l’IGR selon votre barème.",
   },
   {
-    icon: Clock,
-    title: "Pointage mobile",
-    text: "Vos équipes badgent l’entrée et la sortie depuis leur téléphone, avec la position GPS en option.",
+    icon: QrCode,
+    title: "Pointage anti-fraude",
+    text: "QR code qui change toutes les 15 s, position GPS vérifiée sur place et un seul téléphone autorisé par salarié.",
+  },
+  {
+    icon: Timer,
+    title: "Horaires et retards",
+    text: "Vos horaires, la tolérance et les fenêtres d’arrivée : retards, départs anticipés et absences calculés seuls.",
   },
   {
     icon: CalendarDays,
-    title: "Congés et absences",
-    text: "Demandes en ligne, validation par le manager puis par les RH, soldes mis à jour automatiquement.",
+    title: "Congés acquis chaque mois",
+    text: "2,5 jours par mois (ou votre règle), report d’une année sur l’autre, demandes et validation en ligne.",
+  },
+  {
+    icon: Scale,
+    title: "Règles de paie sur mesure",
+    text: "Primes par service, contrat ou ancienneté, plancher et plafond, base IGR et retraite : tout se règle sans code.",
+  },
+  {
+    icon: LayoutTemplate,
+    title: "20 modèles de bulletin",
+    text: "Choisissez votre modèle à l’inscription puis personnalisez-le en glisser-déposer : blocs, couleurs, mentions.",
+  },
+  {
+    icon: FileDown,
+    title: "Bulletins PDF",
+    text: "Chaque bulletin se télécharge ou se partage en PDF, exactement au modèle choisi par l’employeur.",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "Corrections de pointage",
+    text: "Téléphone en panne, oubli ? Le salarié demande une correction, le manager valide, tout est tracé.",
+  },
+  {
+    icon: BarChart3,
+    title: "Présences en direct",
+    text: "Attendus, présents, en retard, absents par site, mis à jour en temps réel, et export Excel / CSV.",
   },
   {
     icon: FileSignature,
@@ -60,6 +101,11 @@ const features = [
     text: "Générez les ordres de virement de la paie du mois, prêts à transmettre à votre banque.",
   },
   {
+    icon: Building2,
+    title: "Plusieurs sites",
+    text: "Siège, agences, entrepôts : chaque site a sa position, son rayon et son écran de pointage.",
+  },
+  {
     icon: Users,
     title: "Dossier employé complet",
     text: "Fiches, documents, matériel attribué, formations et évaluations réunis au même endroit.",
@@ -68,11 +114,6 @@ const features = [
     icon: Briefcase,
     title: "Recrutement",
     text: "Publiez vos offres et suivez chaque candidat, de la présélection à l’embauche.",
-  },
-  {
-    icon: BarChart3,
-    title: "Rapports et comptabilité",
-    text: "Masse salariale, effectifs et présence en temps réel pour piloter votre entreprise.",
   },
 ];
 
@@ -139,11 +180,23 @@ const faqs = [
   },
   {
     q: "Mes employés doivent-ils installer une application ?",
-    a: "Seulement pour le pointage mobile. L’application Android permet de badger, consulter ses présences, ses congés et ses bulletins. Le reste se fait depuis le navigateur.",
+    a: "Oui, l’application Android Mshahara : pointage par QR code ou GPS, historique des présences, demandes de congé et de correction, contrat, salaire et bulletins de paie en PDF. Les RH et l’employeur travaillent depuis le navigateur.",
   },
   {
     q: "Que deviennent mes données si mon abonnement expire ?",
     a: "Elles sont conservées. L’accès à l’espace de travail est suspendu jusqu’au renouvellement, sans aucune suppression.",
+  },
+  {
+    q: "Comment empêcher qu’un salarié pointe depuis chez lui ?",
+    a: "Le pointage n’est accepté que dans le rayon GPS du site, depuis le téléphone autorisé du salarié. Sur les sites qui l’exigent, il faut en plus scanner le QR code affiché à l’écran : il change toutes les 15 secondes, une photo envoyée par message ne fonctionne donc pas.",
+  },
+  {
+    q: "Comment sont calculés les congés ?",
+    a: "Vous choisissez la règle par type de congé : par exemple 2,5 jours acquis à la fin de chaque mois travaillé, soit 30 jours par an. Les jours non pris sont reportés sur l’année suivante (avec un plafond si vous le souhaitez) et personne ne peut demander plus que son solde.",
+  },
+  {
+    q: "Puis-je adapter le bulletin de paie à mon entreprise ?",
+    a: "Oui. 20 modèles sont proposés, du plus sobre au plus détaillé. Vous pouvez ensuite ajouter, retirer ou déplacer les blocs en glisser-déposer, changer la couleur et les mentions. Les bulletins déjà émis gardent leur mise en page.",
   },
 ];
 
@@ -325,6 +378,95 @@ function LandingPage() {
           </div>
         </section>
 
+        {/* Key figures */}
+        <section className="border-y border-border/60 bg-card">
+          <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-10 text-center md:grid-cols-4">
+            {[
+              { value: "15 s", label: "durée de vie d’un QR code de pointage" },
+              { value: "20", label: "modèles de bulletin personnalisables" },
+              { value: "2,5 j", label: "de congés acquis par mois (réglable)" },
+              { value: "1 clic", label: "pour un bulletin PDF au modèle de l’entreprise" },
+            ].map((k) => (
+              <div key={k.label}>
+                <p className="font-display text-3xl font-bold text-primary md:text-4xl">{k.value}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{k.label}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Secure attendance */}
+        <section id="pointage" className="scroll-mt-20">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 lg:grid-cols-2">
+            <div>
+              <SectionTitle
+                eyebrow="Pointage sécurisé"
+                title="Fini les pointages à distance et les badges prêtés"
+                text="Chaque pointage passe par plusieurs contrôles, faits par le serveur, avant d’être enregistré."
+                align="left"
+              />
+              <ul className="mt-8 space-y-4">
+                {[
+                  { icon: QrCode, t: "QR code tournant", d: "Un écran dans chaque site affiche un code signé qui change toutes les 15 secondes." },
+                  { icon: MapPin, t: "Position vérifiée", d: "Le salarié doit être dans le rayon du site, avec un GPS assez précis ; les fausses positions sont rejetées." },
+                  { icon: Smartphone, t: "Un téléphone par salarié", d: "Un nouveau téléphone doit être approuvé par les RH : impossible de pointer pour un collègue." },
+                  { icon: Timer, t: "Retards et absences automatiques", d: "Selon vos horaires et votre tolérance ; la journée se clôture seule (absent, sortie manquante)." },
+                  { icon: ClipboardCheck, t: "Journal et corrections", d: "Chaque refus est expliqué et enregistré ; les corrections passent par le manager et restent tracées." },
+                ].map(({ icon: Icon, t, d }) => (
+                  <li key={t} className="flex gap-4">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="font-semibold text-primary">{t}</p>
+                      <p className="text-sm text-muted-foreground">{d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <QrScreenMock />
+          </div>
+        </section>
+
+        {/* Payslips */}
+        <section id="bulletins" className="scroll-mt-20 bg-card">
+          <div className="mx-auto max-w-6xl px-4 py-20">
+            <SectionTitle
+              eyebrow="Bulletins de paie"
+              title="Un bulletin à votre image, en glisser-déposer"
+              text="Choisissez parmi 20 modèles dès l’inscription, puis composez le vôtre : blocs, couleurs, mentions, rubriques et règles de calcul."
+            />
+            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {SHOWCASE_LAYOUTS.map((m) => (
+                <div key={m.name} className="overflow-hidden rounded-xl border border-border/70 bg-background shadow-sm">
+                  <div className="pointer-events-none h-64 overflow-hidden bg-muted/40" aria-hidden>
+                    <div className="origin-top-left scale-[0.34]" style={{ width: "294%" }}>
+                      <PayslipRenderer slip={SAMPLE_PAYSLIP} layout={m.layout} />
+                    </div>
+                  </div>
+                  <div className="border-t p-4">
+                    <p className="font-semibold text-primary">{m.name}</p>
+                    <p className="text-xs text-muted-foreground">{m.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {[
+                { t: "Éditeur glisser-déposer", d: "Ajoutez cumuls de l’année, solde de congés, heures, signatures ou texte libre ; déplacez les blocs, changez la couleur." },
+                { t: "Rubriques et règles", d: "Glissez primes, cotisations et IGR depuis une bibliothèque ; conditions par service, contrat ou ancienneté, plancher et plafond." },
+                { t: "PDF identique au modèle", d: "Téléchargé depuis le site ou partagé depuis l’application mobile, le PDF reprend exactement votre mise en page." },
+              ].map((x) => (
+                <div key={x.t} className="rounded-lg border border-border/70 bg-background p-5">
+                  <p className="font-semibold text-primary">{x.t}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{x.d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Steps */}
         <section id="etapes" className="scroll-mt-20 bg-primary text-primary-foreground">
           <div className="mx-auto max-w-6xl px-4 py-20">
@@ -356,9 +498,10 @@ function LandingPage() {
               />
               <ul className="mt-8 space-y-4">
                 {[
-                  "Entrée et sortie en un geste, avec position GPS en option",
-                  "Historique des présences du mois",
-                  "Demandes de congé et bulletins de paie",
+                  "Pointage en un geste : scan du QR code du site ou GPS, avec l’heure et le statut aussitôt",
+                  "Horaire du jour, historique des présences et demandes de correction",
+                  "Soldes de congés à jour et demandes envoyées directement au manager",
+                  "Salaire, contrat et bulletins de paie à partager en PDF (WhatsApp, e-mail…)",
                   "Validation des congés de l’équipe pour les managers",
                 ].map((t) => (
                   <li key={t} className="flex items-start gap-3 text-muted-foreground">
@@ -575,6 +718,115 @@ function PhoneMock() {
             <p className="font-display text-lg font-bold text-primary">18,5</p>
             <p className="text-[11px] text-muted-foreground">jours de congé</p>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Four payslip templates shown on the landing page (same renderer as the app). */
+const SHOWCASE_LAYOUTS: { name: string; text: string; layout: PayslipLayout }[] = [
+  {
+    name: "Moderne",
+    text: "Net à payer en bannière, mise en page aérée.",
+    layout: {
+      theme: { accent: "#0E4C56", font: "sans", density: "comfortable" },
+      blocks: [
+        { id: "a", type: "company_header", options: { align: "banner" } },
+        { id: "b", type: "net_highlight", options: { style: "banner" } },
+        { id: "c", type: "employee_info", options: {} },
+        { id: "d", type: "earnings_table", options: { showBaseRate: false } },
+        { id: "e", type: "deductions_table", options: { showBaseRate: false } },
+      ],
+    },
+  },
+  {
+    name: "Officiel Comores",
+    text: "Administratif complet, cachet et signatures.",
+    layout: {
+      theme: { accent: "#14532D", font: "serif", density: "comfortable" },
+      blocks: [
+        { id: "a", type: "company_header", options: { align: "center" } },
+        { id: "b", type: "title_period", options: { title: "Bulletin de salaire" } },
+        { id: "c", type: "employee_info", options: {} },
+        { id: "d", type: "earnings_table", options: {} },
+        { id: "e", type: "deductions_table", options: {} },
+        { id: "f", type: "net_highlight", options: { style: "line" } },
+        { id: "g", type: "signatures", options: {} },
+      ],
+    },
+  },
+  {
+    name: "Corporate Bleu",
+    text: "Bandeau bleu et récapitulatif chiffré.",
+    layout: {
+      theme: { accent: "#1D4ED8", font: "sans", density: "comfortable" },
+      blocks: [
+        { id: "a", type: "company_header", options: { align: "banner" } },
+        { id: "b", type: "title_period", options: {} },
+        { id: "c", type: "employee_info", options: {} },
+        { id: "d", type: "earnings_table", options: {} },
+        { id: "e", type: "totals_summary", options: {} },
+      ],
+    },
+  },
+  {
+    name: "Élégant Bordeaux",
+    text: "Police élégante, net encadré en haut.",
+    layout: {
+      theme: { accent: "#881337", font: "serif", density: "comfortable" },
+      blocks: [
+        { id: "a", type: "company_header", options: {} },
+        { id: "b", type: "net_highlight", options: { style: "box" } },
+        { id: "c", type: "title_period", options: {} },
+        { id: "d", type: "employee_info", options: {} },
+        { id: "e", type: "earnings_table", options: {} },
+        { id: "f", type: "deductions_table", options: {} },
+      ],
+    },
+  },
+];
+
+/** Illustration of the site screen showing the rotating QR code. */
+function QrScreenMock() {
+  // Static, decorative QR-like pattern.
+  const cells = Array.from({ length: 21 * 21 }, (_, i) => {
+    const x = i % 21;
+    const y = Math.floor(i / 21);
+    const finder = (cx: number, cy: number) =>
+      x >= cx && x < cx + 7 && y >= cy && y < cy + 7 &&
+      (x === cx || x === cx + 6 || y === cy || y === cy + 6 || (x >= cx + 2 && x <= cx + 4 && y >= cy + 2 && y <= cy + 4));
+    if (finder(0, 0) || finder(14, 0) || finder(0, 14)) return true;
+    if ((x < 8 && y < 8) || (x > 12 && y < 8) || (x < 8 && y > 12)) return false;
+    return ((x * 7 + y * 13 + x * y) % 5) < 2;
+  });
+  return (
+    <div className="mx-auto w-full max-w-md">
+      <div className="rounded-2xl border-8 border-[#16211F] bg-primary p-6 text-center text-primary-foreground shadow-2xl">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-mono uppercase tracking-[0.2em] text-gold">Siège Moroni</span>
+          <span className="font-display text-lg font-bold">08:02:41</span>
+        </div>
+        <div className="mx-auto mt-5 w-56 rounded-xl bg-white p-3">
+          <div className="grid" style={{ gridTemplateColumns: "repeat(21, 1fr)" }}>
+            {cells.map((on, i) => (
+              <span key={i} className={`aspect-square ${on ? "bg-[#16211F]" : ""}`} />
+            ))}
+          </div>
+        </div>
+        <div className="mx-auto mt-4 h-1.5 w-48 overflow-hidden rounded-full bg-white/20">
+          <div className="h-full w-2/3 bg-gold" />
+        </div>
+        <p className="mt-2 text-xs text-primary-foreground/80">Nouveau code dans 10 s · scannez avec l’app Mshahara</p>
+      </div>
+      <div className="mx-auto -mt-4 w-40 rounded-b-xl bg-[#16211F] py-2" />
+      <div className="mx-auto mt-6 flex max-w-xs items-center gap-3 rounded-xl border bg-card p-4 text-sm shadow">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-success/15 text-success">
+          <Check className="h-4 w-4" />
+        </span>
+        <div>
+          <p className="font-semibold">Entrée 08:02 — à l’heure</p>
+          <p className="text-xs text-muted-foreground">Siège Moroni · 6 m · QR + GPS</p>
         </div>
       </div>
     </div>

@@ -151,7 +151,11 @@ async function handleMobile(request: Request, url: URL): Promise<Response> {
     const email = String(body.email ?? "");
     const password = String(body.password ?? "");
     const { user, error } = await verifyPassword(email, password);
-    if (error || !user) return json({ message: "E-mail ou mot de passe incorrect." }, 401, CORS);
+    if (error || !user) {
+      // Diagnostic without leaking the password: email as received + password length.
+      console.warn(`[mobile-login] échec pour ${JSON.stringify(email)} (mot de passe : ${password.length} caractères)`);
+      return json({ message: "E-mail ou mot de passe incorrect." }, 401, CORS);
+    }
     const { token, expiresAt } = await createSession(user.id);
     return json(
       { access_token: token, expires_at: Math.floor(expiresAt.getTime() / 1000), user },
