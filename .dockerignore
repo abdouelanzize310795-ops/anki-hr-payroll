@@ -6,3 +6,6 @@ apps
 .git
 .env*
 screenshots
+*.local
+*.apk
+db/backups

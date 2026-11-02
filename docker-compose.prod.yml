@@ -1,0 +1,42 @@
+# Production (VPS): docker compose -f docker-compose.prod.yml up -d --build
+# Secrets come from .env.local (SESSION_SECRET, POSTGRES_PASSWORD, ADMIN_EMAIL, ADMIN_PASSWORD).
+services:
+  db:
+    image: postgres:16
+    container_name: mshahara-db
+    environment:
+      POSTGRES_DB: mshahara
+      POSTGRES_USER: mshahara
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env.local}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mshahara -d mshahara"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: mshahara-web
+    depends_on:
+      db:
+        condition: service_healthy
+    # Reachable only from the host: put Caddy/Nginx (HTTPS) in front.
+    ports:
+      - "127.0.0.1:8090:8080"
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: postgres://mshahara:${POSTGRES_PASSWORD}@db:5432/mshahara
+      UPLOADS_DIR: /data/uploads
+      COOKIE_SECURE: "true"
+    volumes:
+      - uploads:/data/uploads
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  uploads:

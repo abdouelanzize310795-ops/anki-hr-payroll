@@ -17,6 +17,8 @@ export default defineConfig({
       fs: { deny: [".env", ".env.*", "*.local", "*.{crt,pem,key}", "db/**", "docker-compose.yml"] },
     },
   },
+  // Self-hosted Node server (Docker / VPS) instead of the Cloudflare default.
+  nitro: { preset: "node-server" },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
