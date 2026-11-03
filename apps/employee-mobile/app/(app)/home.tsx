@@ -173,6 +173,11 @@ export default function HomeScreen() {
             </Pressable>
           );
         })()}
+        {!schedule?.requires_qr && (home?.actions.can_clock_in || home?.actions.can_clock_out) ? (
+          <Pressable onPress={() => router.push("/scan")} hitSlop={8} disabled={busy}>
+            <Text style={styles.correctionLink}>Pointer en scannant le QR code du site ›</Text>
+          </Pressable>
+        ) : null}
         <Pressable onPress={() => router.push("/history")} hitSlop={8}>
           <Text style={styles.correctionLink}>Oubli ou téléphone en panne ? Demander une correction ›</Text>
         </Pressable>
