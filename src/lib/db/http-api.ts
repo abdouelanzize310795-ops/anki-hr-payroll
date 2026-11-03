@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { SESSION_COOKIE, createSession, deleteSession, getUserBySessionToken, verifyPassword } from "./auth";
+import { SESSION_COOKIE, changeOwnPassword, createSession, deleteSession, getUserBySessionToken, verifyPassword } from "./auth";
 import { getPool } from "./pool";
 import { callRpc } from "./query-builder";
 import {
@@ -135,6 +135,11 @@ async function handleStorage(request: Request, url: URL): Promise<Response> {
   return json({ message: "Route inconnue" }, 404);
 }
 
+/** Client address as seen by the reverse proxy (Caddy sets X-Forwarded-For). */
+export function clientIp(request: Request): string | null {
+  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || null;
+}
+
 function bearer(request: Request): string | null {
   const header = request.headers.get("authorization") ?? "";
   return header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : null;
@@ -150,11 +155,13 @@ async function handleMobile(request: Request, url: URL): Promise<Response> {
   if (route === "login") {
     const email = String(body.email ?? "");
     const password = String(body.password ?? "");
-    const { user, error } = await verifyPassword(email, password);
+    const { user, error } = await verifyPassword(email, password, clientIp(request));
     if (error || !user) {
       // Diagnostic without leaking the password: email as received + password length.
       console.warn(`[mobile-login] échec pour ${JSON.stringify(email)} (mot de passe : ${password.length} caractères)`);
-      return json({ message: "E-mail ou mot de passe incorrect." }, 401, CORS);
+      const locked = error?.code === "locked";
+      const explained = locked || error?.code === "email_not_confirmed";
+      return json({ message: explained ? error!.message : "E-mail ou mot de passe incorrect." }, locked ? 429 : 401, CORS);
     }
     const { token, expiresAt } = await createSession(user.id);
     return json(
@@ -174,6 +181,21 @@ async function handleMobile(request: Request, url: URL): Promise<Response> {
   }
 
   if (route === "session") return json({ user }, 200, CORS);
+
+  // New password chosen in the app (required at the first sign-in of an
+  // account created by HR). The current password is checked again.
+  if (route === "change-password") {
+    const current = String(body.current_password ?? "");
+    const next = String(body.new_password ?? "");
+    if (next.length < 8) return json({ message: "Le nouveau mot de passe doit faire au moins 8 caractères." }, 400, CORS);
+    if (next === current) return json({ message: "Choisissez un mot de passe différent du provisoire." }, 400, CORS);
+    const check = await verifyPassword(user.email, current, clientIp(request));
+    if (!check.user) {
+      return json({ message: check.error?.code === "locked" ? check.error.message : "Mot de passe actuel incorrect." }, 403, CORS);
+    }
+    await changeOwnPassword(user.id, next, token);
+    return json({ ok: true }, 200, CORS);
+  }
 
   if (route.startsWith("rpc/")) {
     const name = route.slice(4);
@@ -271,6 +293,80 @@ async function handlePayslipPdf(request: Request, url: URL): Promise<Response> {
   }
 }
 
+/**
+ * /api/admin/backups — full-system backups, platform admin only (session cookie).
+ *   GET  /api/admin/backups              list
+ *   POST /api/admin/backups              create one
+ *   GET  /api/admin/backups/:name        download the ZIP
+ *   POST /api/admin/backups/restore      restore (body = ZIP, or ?name= a stored one)
+ * POSTs need the x-mshahara-admin header (a cross-site form cannot send it) and
+ * the restore also needs the admin's password in x-admin-password.
+ */
+async function handleAdminBackups(request: Request, url: URL): Promise<Response> {
+  const token = cookieValue(request, SESSION_COOKIE) ?? bearer(request);
+  const user = await getUserBySessionToken(token);
+  if (!user) return json({ message: "Session expirée, reconnectez-vous." }, 401);
+  const role = await getPool().query("select role from public.profiles where id = $1", [user.id]);
+  if (role.rows[0]?.role !== "platform_admin") return json({ message: "Réservé à l’administrateur plateforme" }, 403);
+  if (request.method === "POST" && request.headers.get("x-mshahara-admin") !== "1") {
+    return json({ message: "Requête refusée" }, 403);
+  }
+
+  const backup = await import("./backup");
+  const rest = url.pathname.slice("/api/admin/backups".length).replace(/^\//, "");
+  try {
+    if (!rest && request.method === "GET") return json({ backups: await backup.listBackups() });
+    if (!rest && request.method === "POST") return json({ backup: await backup.createBackup("manual") });
+
+    if (rest === "restore" && request.method === "POST") {
+      const password = request.headers.get("x-admin-password") ?? "";
+      const check = await verifyPassword(user.email, password, clientIp(request));
+      if (!check.user) return json({ message: "Mot de passe administrateur incorrect" }, 403);
+
+      let file: string;
+      const name = url.searchParams.get("name");
+      if (name) {
+        const stored = backup.backupPath(name);
+        if (!stored) return json({ message: "Sauvegarde introuvable" }, 404);
+        // restoreBackup removes the archive's folder afterwards: work on a copy.
+        const { mkdtemp, copyFile } = await import("node:fs/promises");
+        const os = await import("node:os");
+        const dir = await mkdtemp(path.join(os.tmpdir(), "mshahara-upload-"));
+        file = path.join(dir, "upload.zip");
+        await copyFile(stored, file);
+      } else {
+        if (!request.body) return json({ message: "Aucun fichier reçu" }, 400);
+        file = await backup.saveUpload(request.body);
+      }
+      const result = await backup.restoreBackup(file);
+      return json({ ok: true, ...result });
+    }
+
+    if (rest && request.method === "GET") {
+      const file = backup.backupPath(decodeURIComponent(rest));
+      if (!file) return json({ message: "Sauvegarde introuvable" }, 404);
+      const { createReadStream } = await import("node:fs");
+      const { stat } = await import("node:fs/promises");
+      const { Readable } = await import("node:stream");
+      const info = await stat(file).catch(() => null);
+      if (!info) return json({ message: "Sauvegarde introuvable" }, 404);
+      return new Response(Readable.toWeb(createReadStream(file)) as ReadableStream, {
+        status: 200,
+        headers: {
+          "content-type": "application/zip",
+          "content-length": String(info.size),
+          "content-disposition": `attachment; filename="${path.basename(file)}"`,
+          "cache-control": "private, no-store",
+        },
+      });
+    }
+    return json({ message: "Route inconnue" }, 404);
+  } catch (err) {
+    console.error("[backup]", err);
+    return json({ message: err instanceof Error ? err.message : "Opération impossible" }, 500);
+  }
+}
+
 let jobsStarted = false;
 
 /** Runs the idempotent attendance closing job every 10 minutes (absences, missing check-outs). */
@@ -283,6 +379,14 @@ export function startAttendanceJobs(): void {
       .catch((err) => console.error("[attendance-jobs]", err instanceof Error ? err.message : err));
   setTimeout(run, 30_000);
   setInterval(run, 10 * 60_000);
+
+  // Automatic full backup once a day (the 7 most recent are kept).
+  const daily = () =>
+    import("./backup")
+      .then((b) => b.createBackup("auto"))
+      .catch((err) => console.error("[backup-auto]", err instanceof Error ? err.message : err));
+  setTimeout(daily, 5 * 60_000);
+  setInterval(daily, 24 * 60 * 60_000);
 }
 
 export async function handleApiRequest(request: Request): Promise<Response | null> {
@@ -292,5 +396,8 @@ export async function handleApiRequest(request: Request): Promise<Response | nul
   if (url.pathname.startsWith("/api/mobile/")) return handleMobile(request, url);
   if (url.pathname.startsWith("/api/display/")) return handleDisplay(request, url);
   if (url.pathname.startsWith("/api/payslips/")) return handlePayslipPdf(request, url);
+  if (url.pathname === "/api/admin/backups" || url.pathname.startsWith("/api/admin/backups/")) {
+    return handleAdminBackups(request, url);
+  }
   return null;
 }

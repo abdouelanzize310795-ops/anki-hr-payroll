@@ -18,6 +18,7 @@ import {
   type CompanyApprovalStatus,
   type CompanySubscriptionStatus,
 } from "@/modules/companies/types";
+import { BackupPanel } from "@/modules/admin/components/BackupPanel";
 import { CompanyApprovalActions } from "@/modules/admin/components/CompanyApprovalActions";
 
 export const Route = createFileRoute("/_app/admin")({
@@ -283,6 +284,10 @@ function AdminPage() {
             </Table>
           )}
         </SectionCard>
+      </div>
+
+      <div className="mt-6">
+        <BackupPanel />
       </div>
 
       <div className="mt-6">

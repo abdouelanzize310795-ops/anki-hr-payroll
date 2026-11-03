@@ -264,6 +264,12 @@ export const prepareCompanyLogoUpload = createServerFn({ method: "POST" })
     await requireUserId();
     const supabase = createSupabaseServerClient();
 
+    // Only the company's employer/HR (or a platform admin) may upload its logo.
+    const { data: canManage } = await supabase.rpc("can_manage_company", { target: data.companyId });
+    if (canManage !== true) {
+      return { ok: false, message: "Vous ne pouvez pas modifier le logo de cette entreprise" };
+    }
+
     const ext =
       data.mimeType === "image/png"
         ? "png"

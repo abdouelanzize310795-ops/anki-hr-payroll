@@ -31,6 +31,8 @@ function TabLabel({ label, focused }: { label: string; focused: boolean }) {
 export default function AppLayout() {
   const { session, loading } = useAuth();
   const [isManager, setIsManager] = useState(false);
+  // Accounts created by HR: the temporary password must be replaced first.
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -40,12 +42,14 @@ export default function AppLayout() {
           setIsManager(
             Boolean(me.is_manager) || me.profile.role === "manager",
           );
+          setMustChangePassword(Boolean(me.profile.must_change_password));
         })
         .catch(() => setIsManager(false));
     }, [session]),
   );
 
   if (!loading && !session) return <Redirect href="/login" />;
+  if (mustChangePassword) return <Redirect href="/change-password" />;
 
   return (
     <Tabs

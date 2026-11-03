@@ -113,10 +113,10 @@ function HelpdeskPage() {
       ]);
       setEmployees(emps);
       setDepartments(depts);
-      const mine = emps.find((e) => e.user_id === auth.user?.id);
+      const mine = emps.find((e) => e.user_id === auth.id);
       setMyEmployeeId(mine?.id ?? null);
     })();
-  }, [effectiveCompanyId, auth.user?.id]);
+  }, [effectiveCompanyId, auth.id]);
 
   useEffect(() => {
     void load();
@@ -414,7 +414,7 @@ function HelpdeskPage() {
               {tickets.map((t) => {
                 const isRequester =
                   myEmployeeId === t.requester_employee_id ||
-                  t.created_by === auth.user?.id;
+                  t.created_by === auth.id;
                 const pending = t.status === "pending_manager";
                 const canTreat =
                   t.status === "open" || t.status === "in_progress" || t.status === "resolved";

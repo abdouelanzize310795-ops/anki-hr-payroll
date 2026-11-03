@@ -9,6 +9,7 @@ import {
 } from "./schemas";
 import type { Employee, EmployeeStatus, EmployeeWithRelations } from "./types";
 import type { Department } from "@/modules/companies/types";
+import { afterAccountProvisioned } from "@/lib/db/accounts";
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; message: string };
 
@@ -391,6 +392,8 @@ export type EmployeeAccountProvision = {
   email: string;
   temporaryPassword: string | null;
   userId: string;
+  /** Sign-in details e-mailed to the employee. */
+  mailed?: boolean;
 };
 
 export const provisionEmployeeAccount = createServerFn({ method: "POST" })
@@ -417,6 +420,9 @@ export const provisionEmployeeAccount = createServerFn({ method: "POST" })
       if (!p?.user_id || !p.email) {
         return { ok: false, message: "Création du compte impossible" };
       }
+      const mailed = p.temporary_password
+        ? (await afterAccountProvisioned({ userId: p.user_id, email: p.email, temporaryPassword: p.temporary_password })).mailed
+        : false;
       return {
         ok: true,
         data: {
@@ -425,6 +431,7 @@ export const provisionEmployeeAccount = createServerFn({ method: "POST" })
           email: p.email,
           temporaryPassword: p.temporary_password ?? null,
           userId: p.user_id,
+          mailed,
         },
       };
     },

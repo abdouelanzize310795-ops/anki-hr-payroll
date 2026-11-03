@@ -245,7 +245,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       /que.*puis.?je.*(demander|faire|poser)/,
       /aide/,
       /help/,
-      /comment.*utiliser.*(assistant|ia|ankiba)/,
+      /comment.*utiliser.*(assistant|ia|mshahara)/,
       /que.*sais.?tu.*faire/,
       /quelles.*questions/,
     ],

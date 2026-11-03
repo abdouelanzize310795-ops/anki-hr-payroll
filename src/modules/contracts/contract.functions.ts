@@ -7,6 +7,7 @@ import {
   updateContractSchema,
 } from "./schemas";
 import type { Contract, ContractDetail, ContractStatus, ContractWithRelations } from "./types";
+import { afterAccountProvisioned } from "@/lib/db/accounts";
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; message: string };
 
@@ -252,6 +253,8 @@ export type EmployeeAccountProvision = {
   email: string;
   temporaryPassword: string | null;
   userId: string;
+  /** Sign-in details e-mailed to the employee. */
+  mailed?: boolean;
 };
 
 export const transitionContract = createServerFn({ method: "POST" })
@@ -301,12 +304,16 @@ export const transitionContract = createServerFn({ method: "POST" })
           user_id?: string;
         };
         if (p?.user_id && p.email) {
+          const mailed = p.temporary_password
+            ? (await afterAccountProvisioned({ userId: p.user_id, email: p.email, temporaryPassword: p.temporary_password })).mailed
+            : false;
           account = {
             created: Boolean(p.created),
             linked: Boolean(p.linked),
             email: p.email,
             temporaryPassword: p.temporary_password ?? null,
             userId: p.user_id,
+            mailed,
           };
         }
       }

@@ -29,9 +29,11 @@ services:
     environment:
       DATABASE_URL: postgres://mshahara:${POSTGRES_PASSWORD:-mshahara}@db:5432/mshahara
       UPLOADS_DIR: /data/uploads
+      BACKUPS_DIR: /data/backups
       CHOKIDAR_USEPOLLING: "true"
     volumes:
       - uploads:/data/uploads
+      - backups:/data/backups
       - .:/app
       - web-node-modules:/app/node_modules
     restart: unless-stopped
@@ -52,5 +54,6 @@ volumes:
   web-node-modules:
   pgdata:
   uploads:
+  backups:
   gradle-cache:
   android-ndk:

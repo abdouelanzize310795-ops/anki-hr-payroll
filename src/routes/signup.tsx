@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getAuthSession, signInWithPassword, signUpWithPassword } from "@/lib/auth/auth.functions";
+import { sendEmailConfirmation } from "@/lib/auth/email-links.functions";
 import { brand } from "@/lib/brand";
 
 const schema = z.object({
@@ -47,7 +48,10 @@ function SignupPage() {
     }
 
     if (result.needsEmailConfirmation) {
-      setInfo("Compte créé. Vérifiez votre e-mail pour confirmer l’adresse, puis connectez-vous.");
+      await sendEmailConfirmation({ data: { email: values.email } });
+      setInfo(
+        "Compte créé. Un e-mail de confirmation vient de vous être envoyé : cliquez sur le lien qu’il contient, puis connectez-vous.",
+      );
       return;
     }
 

@@ -1,5 +1,5 @@
 import { Link, getRouteApi, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard, Building2, Users, UserPlus, FileSignature, Clock,
@@ -293,7 +293,12 @@ function TopBar({ onOpenCommand }: { onOpenCommand: () => void }) {
     setIsDark(dark);
   }, []);
 
+  // Unread badge: refreshed on navigation, but at most once a minute per company.
+  const lastBadgeLoad = useRef<{ companyId: string | null | undefined; at: number } | null>(null);
   useEffect(() => {
+    const last = lastBadgeLoad.current;
+    if (last && last.companyId === companyId && Date.now() - last.at < 60_000) return;
+    lastBadgeLoad.current = { companyId, at: Date.now() };
     void (async () => {
       try {
         let read = new Set<string>();

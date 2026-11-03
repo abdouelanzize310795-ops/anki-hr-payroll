@@ -30,6 +30,33 @@ async function requireUserId(): Promise<string> {
   return data.user.id;
 }
 
+/** Company-wide payroll totals are for employer/HR and the platform admin only. */
+async function canSeeCompanyPayroll(): Promise<boolean> {
+  const supabase = createSupabaseServerClient();
+  const { data } = await supabase.rpc("current_user_role");
+  return data === "employer" || data === "hr" || data === "platform_admin";
+}
+
+type PayslipRun = {
+  payslip_id: string;
+  payroll_run_id: string;
+  label: string;
+  period_year: number;
+  period_month: number;
+  period_start: string;
+  period_end: string;
+  status: PayrollRunStatus;
+};
+
+/** Run period/status of payslips the caller may see (no company-wide totals). */
+async function payslipRuns(payslipIds: string[]): Promise<Map<string, PayslipRun>> {
+  if (payslipIds.length === 0) return new Map();
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.rpc("payslip_runs", { p_payslip_ids: payslipIds });
+  if (error) throw new Error(error.message);
+  return new Map(((data ?? []) as PayslipRun[]).map((r) => [r.payslip_id, r]));
+}
+
 function mapComponent(row: PayrollComponent): PayrollComponent {
   return {
     ...row,
@@ -54,7 +81,10 @@ export const listComponentPresets = createServerFn({ method: "GET" }).handler(
       .select("*")
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
-    return ((data ?? []) as PayrollComponentPreset[]).map((p) => ({ ...p, rate_value: Number(p.rate_value) }));
+    return ((data ?? []) as PayrollComponentPreset[]).map((p) => ({
+      ...p,
+      rate_value: Number(p.rate_value),
+    }));
   },
 );
 
@@ -117,7 +147,13 @@ const rulesSchema = z
     id: z.string().uuid(),
     name: z.string().trim().min(2).max(80),
     calcMethod: z.enum([
-      "base_salary", "fixed", "percent_of_base", "percent_of_gross", "worked_hours", "overtime_hours", "igr_progressive",
+      "base_salary",
+      "fixed",
+      "percent_of_base",
+      "percent_of_gross",
+      "worked_hours",
+      "overtime_hours",
+      "igr_progressive",
     ]),
     rateValue: z.number().min(0).max(100_000_000),
     percentBasis: z.enum(["auto", "base", "gross", "taxable", "retirement"]),
@@ -151,7 +187,10 @@ export const updateComponentRules = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!existing) return { ok: false, message: "Rubrique introuvable" };
     if (existing.is_system && existing.calc_method !== data.calcMethod) {
-      return { ok: false, message: "La méthode de calcul d’une rubrique système ne peut pas changer" };
+      return {
+        ok: false,
+        message: "La méthode de calcul d’une rubrique système ne peut pas changer",
+      };
     }
 
     const { data: row, error } = await supabase
@@ -191,7 +230,9 @@ export const updateComponentRules = createServerFn({ method: "POST" })
   });
 
 export const reorderComponents = createServerFn({ method: "POST" })
-  .validator(z.object({ companyId: z.string().uuid(), ids: z.array(z.string().uuid()).min(1).max(200) }))
+  .validator(
+    z.object({ companyId: z.string().uuid(), ids: z.array(z.string().uuid()).min(1).max(200) }),
+  )
   .handler(async ({ data }): Promise<ActionResult<{ count: number }>> => {
     await requireUserId();
     const supabase = createSupabaseServerClient();
@@ -214,7 +255,8 @@ export const removeComponent = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .maybeSingle();
     if (!existing) return { ok: false, message: "Rubrique introuvable" };
-    if (existing.is_system) return { ok: false, message: "Une rubrique système peut être désactivée mais pas supprimée" };
+    if (existing.is_system)
+      return { ok: false, message: "Une rubrique système peut être désactivée mais pas supprimée" };
     const { error } = await supabase
       .from("payroll_components")
       .update({ deleted_at: new Date().toISOString(), is_active: false })
@@ -230,7 +272,15 @@ export type PayslipPreview = {
   employer: number;
   worked_hours?: number;
   message?: string;
-  lines: { code: string; label: string; kind: string; basis: number; rate: number; amount: number; hidden: boolean }[];
+  lines: {
+    code: string;
+    label: string;
+    kind: string;
+    basis: number;
+    rate: number;
+    amount: number;
+    hidden: boolean;
+  }[];
 };
 
 export const previewPayslip = createServerFn({ method: "POST" })
@@ -327,7 +377,10 @@ export const updatePayrollComponent = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (existing?.is_system && data.calcMethod && data.calcMethod !== "base_salary") {
-      return { ok: false, message: "Le composant système salaire de base ne peut pas changer de méthode" };
+      return {
+        ok: false,
+        message: "Le composant système salaire de base ne peut pas changer de méthode",
+      };
     }
 
     const { data: row, error } = await supabase
@@ -371,6 +424,7 @@ export const listPayrollRuns = createServerFn({ method: "GET" })
   .validator(z.object({ companyId: z.string().uuid().optional() }).optional())
   .handler(async ({ data }): Promise<PayrollRunWithMeta[]> => {
     await requireUserId();
+    if (!(await canSeeCompanyPayroll())) return [];
     const supabase = createSupabaseServerClient();
 
     let query = supabase
@@ -402,11 +456,24 @@ export const payrollStats = createServerFn({ method: "GET" })
   .validator(z.object({ companyId: z.string().uuid().optional() }).optional())
   .handler(async ({ data }) => {
     await requireUserId();
+    if (!(await canSeeCompanyPayroll())) {
+      return {
+        latestGross: 0,
+        latestNet: 0,
+        latestEmployees: 0,
+        latestAvg: 0,
+        payslipCount: 0,
+        ytdGross: 0,
+        currency: "KMF",
+      };
+    }
     const supabase = createSupabaseServerClient();
 
     let query = supabase
       .from("payroll_runs")
-      .select("status, total_gross, total_net, total_employer_cost, employee_count, period_year, period_month")
+      .select(
+        "status, total_gross, total_net, total_employer_cost, employee_count, period_year, period_month",
+      )
       .is("deleted_at", null)
       .neq("status", "cancelled");
 
@@ -444,6 +511,7 @@ export const payrollTrend = createServerFn({ method: "GET" })
   .validator(z.object({ companyId: z.string().uuid().optional() }).optional())
   .handler(async ({ data }) => {
     await requireUserId();
+    if (!(await canSeeCompanyPayroll())) return [];
     const supabase = createSupabaseServerClient();
 
     let query = supabase
@@ -538,6 +606,7 @@ export const getPayrollRun = createServerFn({ method: "GET" })
   .validator(z.object({ id: z.string().uuid() }))
   .handler(async ({ data }): Promise<(PayrollRunWithMeta & { payslips: Payslip[] }) | null> => {
     await requireUserId();
+    if (!(await canSeeCompanyPayroll())) return null;
     const supabase = createSupabaseServerClient();
 
     const { data: row, error } = await supabase
@@ -586,38 +655,40 @@ export const getPayslip = createServerFn({ method: "GET" })
 
     const slip = mapPayslip(row as Payslip);
 
+    const run = (await payslipRuns([slip.id])).get(slip.id) ?? null;
+
     // Employees and managers only see their own payslips, once the run is approved.
     const { data: auth } = await supabase.auth.getUser();
-    const { data: me } = await supabase.from("profiles").select("role").eq("id", auth.user?.id ?? "").maybeSingle();
+    const { data: me } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", auth.user?.id ?? "")
+      .maybeSingle();
     if (!me || !["employer", "hr", "platform_admin"].includes(me.role)) {
-      const [{ data: owner }, { data: runStatus }] = await Promise.all([
-        supabase.from("employees").select("user_id").eq("id", slip.employee_id).maybeSingle(),
-        supabase.from("payroll_runs").select("status").eq("id", slip.payroll_run_id).maybeSingle(),
-      ]);
-      if (owner?.user_id !== auth.user?.id || !["approved", "paid"].includes(runStatus?.status ?? "")) {
+      const { data: owner } = await supabase
+        .from("employees")
+        .select("user_id")
+        .eq("id", slip.employee_id)
+        .maybeSingle();
+      if (owner?.user_id !== auth.user?.id || !["approved", "paid"].includes(run?.status ?? "")) {
         return null;
       }
     }
 
-    const [{ data: lines }, { data: letterhead }, { data: run }, { data: employee }, { data: companyRow }] =
+    const [{ data: lines }, { data: letterhead }, { data: employee }, { data: companyRow }] =
       await Promise.all([
-        supabase
-          .from("payslip_lines")
-          .select("*")
-          .eq("payslip_id", slip.id)
-          .order("sort_order"),
+        supabase.from("payslip_lines").select("*").eq("payslip_id", slip.id).order("sort_order"),
         supabase.rpc("get_company_letterhead", { p_company_id: slip.company_id }),
-        supabase
-          .from("payroll_runs")
-          .select("label, period_start, period_end, period_year, period_month")
-          .eq("id", slip.payroll_run_id)
-          .maybeSingle(),
         supabase
           .from("employees")
           .select("bank_name, bank_account, bank_rib")
           .eq("id", slip.employee_id)
           .maybeSingle(),
-        supabase.from("companies").select("payslip_template_id").eq("id", slip.company_id).maybeSingle(),
+        supabase
+          .from("companies")
+          .select("payslip_template_id")
+          .eq("id", slip.company_id)
+          .maybeSingle(),
       ]);
 
     // Layout frozen at calculation time, else the company's current template.
@@ -634,31 +705,35 @@ export const getPayslip = createServerFn({ method: "GET" })
     // Year-to-date totals (approved/paid runs of the same year up to this period).
     let ytd: RenderablePayslip["ytd"] = null;
     if (run) {
-      const { data: runs } = await supabase
-        .from("payroll_runs")
-        .select("id")
-        .eq("company_id", slip.company_id)
-        .eq("period_year", run.period_year)
-        .lte("period_month", run.period_month)
-        .in("status", ["calculated", "approved", "paid"])
+      const { data: employeeSlips } = await supabase
+        .from("payslips")
+        .select("id, gross_amount, net_amount")
+        .eq("employee_id", slip.employee_id)
         .is("deleted_at", null);
-      const runIds = (runs ?? []).map((r) => r.id);
-      if (runIds.length) {
-        const { data: slips } = await supabase
-          .from("payslips")
-          .select("id, gross_amount, net_amount")
-          .eq("employee_id", slip.employee_id)
-          .in("payroll_run_id", runIds)
-          .is("deleted_at", null);
-        const slipIds = (slips ?? []).map((s) => s.id);
+      const periods = await payslipRuns((employeeSlips ?? []).map((s) => s.id));
+      const slips = (employeeSlips ?? []).filter((s) => {
+        const p = periods.get(s.id);
+        return (
+          p &&
+          p.period_year === run.period_year &&
+          p.period_month <= run.period_month &&
+          ["calculated", "approved", "paid"].includes(p.status)
+        );
+      });
+      if (slips.length) {
+        const slipIds = slips.map((s) => s.id);
         const { data: igrLines } = slipIds.length
-          ? await supabase.from("payslip_lines").select("amount").in("payslip_id", slipIds).eq("calc_method", "igr_progressive")
+          ? await supabase
+              .from("payslip_lines")
+              .select("amount")
+              .in("payslip_id", slipIds)
+              .eq("calc_method", "igr_progressive")
           : { data: [] as { amount: number }[] };
         ytd = {
-          gross: (slips ?? []).reduce((s, x) => s + Number(x.gross_amount), 0),
-          net: (slips ?? []).reduce((s, x) => s + Number(x.net_amount), 0),
+          gross: slips.reduce((s, x) => s + Number(x.gross_amount), 0),
+          net: slips.reduce((s, x) => s + Number(x.net_amount), 0),
           igr: (igrLines ?? []).reduce((s, x) => s + Number(x.amount), 0),
-          months: (slips ?? []).length,
+          months: slips.length,
         };
       }
     }
@@ -716,9 +791,7 @@ export const getPayslip = createServerFn({ method: "GET" })
       company_phone: company?.phone ?? null,
       company_email: company?.email ?? null,
       company_logo_url: company?.logo_url ?? null,
-      period_label: run
-        ? periodLabel(run.period_year, run.period_month)
-        : null,
+      period_label: run ? periodLabel(run.period_year, run.period_month) : null,
       period_start: run?.period_start ?? null,
       period_end: run?.period_end ?? null,
       layout,
@@ -756,7 +829,9 @@ export const listMyPayslips = createServerFn({ method: "GET" }).handler(
 
     const { data: slips, error } = await supabase
       .from("payslips")
-      .select("id, payslip_number, net_amount, gross_amount, currency_code, payroll_run_id, created_at")
+      .select(
+        "id, payslip_number, net_amount, gross_amount, currency_code, payroll_run_id, created_at",
+      )
       .eq("employee_id", emp.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
@@ -765,25 +840,22 @@ export const listMyPayslips = createServerFn({ method: "GET" }).handler(
     if (error) throw new Error(error.message);
     if (!slips?.length) return [];
 
-    const runIds = [...new Set(slips.map((s) => s.payroll_run_id))];
-    const { data: runs } = await supabase
-      .from("payroll_runs")
-      .select("id, label, period_month, period_year")
-      .in("id", runIds);
+    // Only payslips of approved or paid runs (same rule as the mobile app).
+    const runs = await payslipRuns(slips.map((s) => s.id));
 
-    const runMap = new Map((runs ?? []).map((r) => [r.id, r]));
-
-    return slips.map((s) => {
-      const run = runMap.get(s.payroll_run_id);
-      return {
-        id: s.id,
-        payslip_number: s.payslip_number,
-        net_amount: Number(s.net_amount),
-        gross_amount: Number(s.gross_amount),
-        currency_code: s.currency_code,
-        period_label: run?.label ?? `${run?.period_month}/${run?.period_year}`,
-        created_at: s.created_at,
-      };
-    });
+    return slips
+      .filter((s) => ["approved", "paid"].includes(runs.get(s.id)?.status ?? ""))
+      .map((s) => {
+        const run = runs.get(s.id);
+        return {
+          id: s.id,
+          payslip_number: s.payslip_number,
+          net_amount: Number(s.net_amount),
+          gross_amount: Number(s.gross_amount),
+          currency_code: s.currency_code,
+          period_label: run?.label ?? `${run?.period_month}/${run?.period_year}`,
+          created_at: s.created_at,
+        };
+      });
   },
 );

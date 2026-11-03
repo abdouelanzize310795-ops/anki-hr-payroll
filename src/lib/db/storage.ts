@@ -11,7 +11,7 @@ import { getPool, toDbError, type DbError } from "./pool";
 
 export const STORAGE_ROUTE = "/api/storage";
 
-function uploadsDir(): string {
+export function uploadsDir(): string {
   return process.env.UPLOADS_DIR || path.join(process.cwd(), ".uploads");
 }
 

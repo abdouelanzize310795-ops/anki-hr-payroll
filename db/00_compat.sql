@@ -104,7 +104,9 @@ language sql immutable as $$
 $$;
 
 grant usage on schema public, auth, storage to anon, authenticated, service_role;
-grant select on auth.users to authenticated, service_role;
+-- Password hashes and tokens: never readable by app users (SECURITY DEFINER functions only).
+grant select on auth.users to service_role;
+revoke all on auth.users from authenticated, anon;
 grant all on storage.objects, storage.buckets to authenticated, service_role;
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;

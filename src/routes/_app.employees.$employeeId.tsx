@@ -177,9 +177,11 @@ function EmployeeDetailPage() {
         <div className="mb-4 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm">
           <div className="font-medium">Compte collaborateur</div>
           <p className="mt-1 text-muted-foreground">
-            {accountCreds.created
-              ? "Nouveau compte créé — communiquez le mot de passe temporaire."
-              : "Compte lié à l’e-mail existant."}
+            {!accountCreds.created
+              ? "Compte lié à l’e-mail existant."
+              : accountCreds.mailed
+                ? "Nouveau compte créé — identifiants envoyés par e-mail. Le mot de passe devra être changé à la première connexion."
+                : "Nouveau compte créé — communiquez le mot de passe temporaire. Il devra être changé à la première connexion."}
           </p>
           <dl className="mt-3 grid gap-2 sm:grid-cols-2">
             <div>

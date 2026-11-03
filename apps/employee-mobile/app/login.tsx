@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,7 +12,6 @@ import {
 import { Redirect, router } from "expo-router";
 import { signIn } from "@/lib/api/mobile";
 import { useAuth } from "@/lib/auth";
-import { getApiUrl, setApiUrl } from "@/lib/supabase";
 import { BrandMark } from "@/theme/BrandMark";
 import { colors, radii, spacing } from "@/theme/tokens";
 
@@ -22,15 +21,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [server, setServer] = useState("");
-  const [editServer, setEditServer] = useState(false);
-
-  useEffect(() => {
-    getApiUrl().then((url) => {
-      setServer(url);
-      if (!url) setEditServer(true);
-    });
-  }, []);
 
   if (!loading && session) return <Redirect href="/(app)/home" />;
 
@@ -38,7 +28,6 @@ export default function LoginScreen() {
     setBusy(true);
     setError(null);
     try {
-      setServer(await setApiUrl(server));
       await signIn(email, password);
       router.replace("/(app)/home");
     } catch (e) {
@@ -87,26 +76,6 @@ export default function LoginScreen() {
           value={password}
           onChangeText={setPassword}
         />
-
-        {editServer ? (
-          <>
-            <Text style={styles.fieldLabel}>Serveur</Text>
-            <TextInput
-              style={styles.input}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              placeholder="192.168.1.10:8090"
-              placeholderTextColor={colors.muted}
-              value={server}
-              onChangeText={setServer}
-            />
-          </>
-        ) : (
-          <Pressable onPress={() => setEditServer(true)}>
-            <Text style={styles.serverLink}>Serveur : {server || "non configuré"} · modifier</Text>
-          </Pressable>
-        )}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -211,12 +180,6 @@ const styles = StyleSheet.create({
     fontFamily: "Manrope_800ExtraBold",
     fontSize: 15,
     letterSpacing: 0.3,
-  },
-  serverLink: {
-    fontFamily: "Manrope_400Regular",
-    fontSize: 12,
-    color: colors.muted,
-    marginTop: 8,
   },
   error: {
     color: colors.danger,

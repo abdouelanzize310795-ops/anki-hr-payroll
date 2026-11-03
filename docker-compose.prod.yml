@@ -32,11 +32,14 @@ services:
     environment:
       DATABASE_URL: postgres://mshahara:${POSTGRES_PASSWORD}@db:5432/mshahara
       UPLOADS_DIR: /data/uploads
+      BACKUPS_DIR: /data/backups
       COOKIE_SECURE: "true"
     volumes:
       - uploads:/data/uploads
+      - backups:/data/backups
     restart: unless-stopped
 
 volumes:
   pgdata:
   uploads:
+  backups:

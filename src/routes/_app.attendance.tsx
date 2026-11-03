@@ -120,7 +120,7 @@ function AttendancePage() {
         data: { companyId: effectiveCompanyId, status: "active" },
       });
       setEmployees(emps);
-      const mine = emps.find((e) => e.user_id === auth.user?.id) ?? (isEmployee ? emps[0] : undefined);
+      const mine = emps.find((e) => e.user_id === auth.id) ?? (isEmployee ? emps[0] : undefined);
       if (mine) setMyEmployeeId(mine.id);
       if (isEmployee) {
         if (mine) setClockEmployeeId(mine.id);
@@ -128,7 +128,7 @@ function AttendancePage() {
         setClockEmployeeId(emps[0].id);
       }
     })();
-  }, [effectiveCompanyId, isEmployee, auth.user?.id]);
+  }, [effectiveCompanyId, isEmployee, auth.id]);
 
   useEffect(() => {
     void load();
@@ -260,7 +260,7 @@ function AttendancePage() {
       </div>
 
       {isEmployee && todayRecord && (
-        <p className="mt-4 text-sm text-muted-foreground">
+        <div className="mt-4 text-sm text-muted-foreground">
           Aujourd’hui ({today}) : entrée{" "}
           <span className="font-mono text-foreground">{todayRecord.check_in?.slice(0, 5) ?? "—"}</span>
           {" · "}
@@ -268,7 +268,7 @@ function AttendancePage() {
           <span className="font-mono text-foreground">{todayRecord.check_out?.slice(0, 5) ?? "—"}</span>
           {" · "}
           <StatusPill status={attendanceStatusToPill(todayRecord.status)} />
-        </p>
+        </div>
       )}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">

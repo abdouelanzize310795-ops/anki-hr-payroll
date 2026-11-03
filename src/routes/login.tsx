@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getAuthSession, signInWithPassword } from "@/lib/auth/auth.functions";
+import { sendEmailConfirmation } from "@/lib/auth/email-links.functions";
 import { brand } from "@/lib/brand";
 
 const schema = z.object({
@@ -92,7 +93,12 @@ function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Mot de passe</Label>
+                <Link to="/forgot-password" className="text-xs font-medium text-reef hover:underline">
+                  Mot de passe oublié ?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -107,6 +113,18 @@ function LoginPage() {
             {serverError && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {serverError}
+                {serverError.includes("non confirmée") && (
+                  <button
+                    type="button"
+                    className="mt-1 block font-medium underline"
+                    onClick={async () => {
+                      const r = await sendEmailConfirmation({ data: { email: form.getValues("email") } });
+                      setServerError(r.message);
+                    }}
+                  >
+                    Renvoyer le lien de confirmation
+                  </button>
+                )}
               </div>
             )}
 

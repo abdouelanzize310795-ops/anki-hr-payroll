@@ -8,35 +8,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const DEFAULT_API_URL = (process.env.EXPO_PUBLIC_API_URL ?? "").replace(/\/+$/, "");
 const SESSION_KEY = "mshahara.session";
-const API_URL_KEY = "mshahara.apiUrl";
 
-let apiUrl: string | null = null;
-
-function normalizeApiUrl(raw: string): string {
-  const trimmed = raw.trim().replace(/\/+$/, "");
-  if (!trimmed) return "";
-  return /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
-}
-
-/** Server address (saved on the device, editable from the login screen). */
+/** Server address, fixed at build time (EXPO_PUBLIC_API_URL). */
 export async function getApiUrl(): Promise<string> {
-  if (apiUrl === null) {
-    let saved: string | null = null;
-    try {
-      saved = await AsyncStorage.getItem(API_URL_KEY);
-    } catch {
-      saved = null;
-    }
-    apiUrl = saved || DEFAULT_API_URL;
-  }
-  return apiUrl ?? DEFAULT_API_URL;
-}
-
-export async function setApiUrl(raw: string): Promise<string> {
-  const next = normalizeApiUrl(raw) || DEFAULT_API_URL;
-  apiUrl = next;
-  await AsyncStorage.setItem(API_URL_KEY, next);
-  return next;
+  return DEFAULT_API_URL;
 }
 
 export type SessionUser = {
@@ -155,3 +130,9 @@ export const supabase = {
     },
   },
 };
+
+/** Replaces the user's password (checks the current one on the server). */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const session = await loadSession();
+  await post("change-password", { current_password: currentPassword, new_password: newPassword }, session?.access_token);
+}

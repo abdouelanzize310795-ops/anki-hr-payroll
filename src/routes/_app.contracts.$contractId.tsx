@@ -166,7 +166,9 @@ function ContractDetailPage() {
         <div className="mb-4 rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm">
           <div className="font-medium text-gold-foreground">Compte collaborateur prêt</div>
           <p className="mt-1 text-muted-foreground">
-            Transmettez ces identifiants à l’employé (mot de passe affiché une seule fois).
+            {accountCreds.mailed
+              ? "Identifiants envoyés par e-mail à l’employé. Il devra changer son mot de passe à la première connexion."
+              : "Transmettez ces identifiants à l’employé (mot de passe affiché une seule fois). Il devra le changer à la première connexion."}
           </p>
           <dl className="mt-3 grid gap-2 sm:grid-cols-2">
             <div>
@@ -230,7 +232,7 @@ function ContractDetailPage() {
                 <Play className="mr-1.5 h-4 w-4" />Activer
               </Button>
             )}
-            {contract.status !== "cancelled" && (
+            {(
               <div className="flex min-w-[240px] flex-1 items-end gap-2">
                 <div className="flex-1 space-y-1">
                   <Label htmlFor="cancelReason">Motif d’annulation</Label>

@@ -1,5 +1,5 @@
 import { createServerOnlyFn } from "@tanstack/react-start";
-import { deleteCookie, getCookie, setCookie } from "@tanstack/react-start/server";
+import { deleteCookie, getCookie, getRequestHeader, setCookie } from "@tanstack/react-start/server";
 import {
   SESSION_COOKIE,
   SESSION_TTL_DAYS,
@@ -13,6 +13,7 @@ import {
 } from "@/lib/db/auth";
 import { QueryBuilder, callRpc } from "@/lib/db/query-builder";
 import { storageBucket } from "@/lib/db/storage";
+import { mailEnabled } from "@/lib/db/mail";
 
 /**
  * Server data client for TanStack Start server functions / loaders.
@@ -74,7 +75,8 @@ function createDbClient() {
       },
 
       async signInWithPassword({ email, password }: { email: string; password: string }) {
-        const { user, error } = await verifyPassword(email, password);
+        const ip = getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim() || null;
+        const { user, error } = await verifyPassword(email, password, ip);
         if (error || !user) return { data: { user: null, session: null }, error: authError(error?.message ?? "Invalid login credentials") };
         const session = await startSession(user);
         return { data: { user, session }, error: null };
@@ -89,8 +91,11 @@ function createDbClient() {
         password: string;
         options?: { data?: Record<string, unknown> };
       }) {
-        const { user, error } = await createUser(email, password, options?.data ?? {});
+        // With e-mail configured, the address must be confirmed before the first sign-in.
+        const confirm = mailEnabled();
+        const { user, error } = await createUser(email, password, options?.data ?? {}, {}, !confirm);
         if (error || !user) return { data: { user: null, session: null }, error: authError(error?.message ?? "Inscription impossible") };
+        if (confirm) return { data: { user, session: null }, error: null };
         const session = await startSession(user);
         return { data: { user, session }, error: null };
       },
