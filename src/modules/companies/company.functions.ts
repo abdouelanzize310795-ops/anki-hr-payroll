@@ -6,6 +6,7 @@ import {
   createCompanySchema,
   prepareLogoUploadSchema,
   updateCompanySchema,
+  logoUrlSchema,
 } from "./schemas";
 import type { Branch, Company, CompanyWithMeta, Country, Currency, Department } from "./types";
 
@@ -304,7 +305,7 @@ export const setCompanyLogoUrl = createServerFn({ method: "POST" })
   .validator(
     z.object({
       companyId: z.string().uuid(),
-      logoUrl: z.string().url(),
+      logoUrl: logoUrlSchema,
     }),
   )
   .handler(async ({ data }): Promise<ActionResult<Company>> => {

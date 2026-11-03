@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+/** Logo address: a full URL, or a file served by our own storage (/api/storage/…). */
+export const logoUrlSchema = z
+  .string()
+  .trim()
+  .max(1000)
+  .refine((v) => v.startsWith("/api/storage/") || /^https?:\/\/\S+$/i.test(v), "Adresse du logo invalide");
+
 export const createCompanySchema = z.object({
   legalName: z.string().trim().min(2, "Raison sociale obligatoire").max(200),
   tradeName: z.string().trim().max(200).optional().or(z.literal("")),
@@ -25,7 +32,7 @@ export const updateCompanySchema = createCompanySchema.extend({
   standardHoursPerDay: z.number().min(1).max(24).optional(),
   overtimeMultiplier: z.number().min(0).max(10).optional(),
   isActive: z.boolean().optional(),
-  logoUrl: z.string().url().optional().nullable().or(z.literal("")),
+  logoUrl: logoUrlSchema.optional().nullable().or(z.literal("")),
 });
 
 export const prepareLogoUploadSchema = z.object({

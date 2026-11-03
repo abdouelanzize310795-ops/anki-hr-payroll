@@ -41,11 +41,18 @@ function OnboardingPage() {
     if (!result.ok) {
       throw new Error(result.message);
     }
+    // The company now exists: a failed logo or template must not keep the user
+    // on this form (submitting again would create a second company). Both can
+    // be set later from the company page.
     if (logoFile) {
-      await uploadCompanyLogoFile(result.data.id, logoFile);
+      await uploadCompanyLogoFile(result.data.id, logoFile).catch((err) =>
+        console.error("[onboarding] logo", err),
+      );
     }
     if (templateId !== CLASSIC_TEMPLATE_ID) {
-      await setCompanyTemplate({ data: { companyId: result.data.id, templateId } });
+      await setCompanyTemplate({ data: { companyId: result.data.id, templateId } }).catch((err) =>
+        console.error("[onboarding] modèle", err),
+      );
     }
     await navigate({ to: "/subscriptions" });
   };
