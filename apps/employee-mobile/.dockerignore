@@ -9,3 +9,5 @@ android/*.log
 *.apk
 emulator-check.png
 cmd.exe
+release-keys
+*.aab

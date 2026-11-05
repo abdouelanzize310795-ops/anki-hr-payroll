@@ -50,6 +50,23 @@ services:
       - gradle-cache:/gradle-cache
       - android-ndk:/opt/android-sdk/ndk
 
+  # Play Store bundle, signed with the upload key: docker compose --profile store up --build mobile-bundle
+  mobile-bundle:
+    build:
+      context: ./apps/employee-mobile
+      dockerfile: Dockerfile.android
+    container_name: mshahara-mobile-bundle
+    profiles: ["store"]
+    cpuset: "0-3"
+    environment:
+      MSHAHARA_KEYS: /keys
+    command: ["sh", "-c", "cd android && chmod +x gradlew && ./gradlew --no-daemon --max-workers=2 -Dorg.gradle.jvmargs=-Xmx3g bundleRelease && cp app/build/outputs/bundle/release/app-release.aab /out/Mshahara.aab && echo AAB pret: /out/Mshahara.aab"]
+    volumes:
+      - ./apps/employee-mobile/dist:/out
+      - ./apps/employee-mobile/release-keys:/keys:ro
+      - gradle-cache:/gradle-cache
+      - android-ndk:/opt/android-sdk/ndk
+
 volumes:
   web-node-modules:
   pgdata:

@@ -88,13 +88,13 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'km.ankibapay.employee'
+    namespace 'online.mshahara.employee'
     defaultConfig {
-        applicationId 'km.ankibapay.employee'
+        applicationId 'online.mshahara.employee'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 4
-        versionName "1.0.3"
+        versionCode 5
+        versionName "1.0.4"
     }
     signingConfigs {
         debug {
@@ -103,15 +103,24 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Upload key for Google Play, kept out of git and mounted at build time.
+        if (System.getenv('MSHAHARA_KEYS')) {
+            def keyProps = new Properties()
+            file("${System.getenv('MSHAHARA_KEYS')}/keystore.properties").withInputStream { keyProps.load(it) }
+            release {
+                storeFile file("${System.getenv('MSHAHARA_KEYS')}/${keyProps['storeFile']}")
+                storePassword keyProps['storePassword']
+                keyAlias keyProps['keyAlias']
+                keyPassword keyProps['keyPassword']
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig System.getenv('MSHAHARA_KEYS') ? signingConfigs.release : signingConfigs.debug
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"

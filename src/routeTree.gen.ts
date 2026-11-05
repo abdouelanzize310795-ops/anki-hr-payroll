@@ -10,11 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as SuppressionCompteRouteImport } from './routes/suppression-compte'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as ConfidentialiteRouteImport } from './routes/confidentialite'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -56,6 +58,11 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuppressionCompteRoute = SuppressionCompteRouteImport.update({
+  id: '/suppression-compte',
+  path: '/suppression-compte',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -79,6 +86,11 @@ const LoginRoute = LoginRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfidentialiteRoute = ConfidentialiteRouteImport.update({
+  id: '/confidentialite',
+  path: '/confidentialite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChangePasswordRoute = ChangePasswordRouteImport.update({
@@ -260,11 +272,13 @@ const AppPayrollPayslipPayslipIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/change-password': typeof ChangePasswordRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/suppression-compte': typeof SuppressionCompteRoute
   '/verify-email': typeof VerifyEmailRoute
   '/accounting': typeof AppAccountingRoute
   '/admin': typeof AppAdminRoute
@@ -302,11 +316,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/change-password': typeof ChangePasswordRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/suppression-compte': typeof SuppressionCompteRoute
   '/verify-email': typeof VerifyEmailRoute
   '/accounting': typeof AppAccountingRoute
   '/admin': typeof AppAdminRoute
@@ -346,11 +362,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/suppression-compte': typeof SuppressionCompteRoute
   '/verify-email': typeof VerifyEmailRoute
   '/_app/accounting': typeof AppAccountingRoute
   '/_app/admin': typeof AppAdminRoute
@@ -390,11 +408,13 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/change-password'
+    | '/confidentialite'
     | '/forgot-password'
     | '/login'
     | '/onboarding'
     | '/reset-password'
     | '/signup'
+    | '/suppression-compte'
     | '/verify-email'
     | '/accounting'
     | '/admin'
@@ -432,11 +452,13 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/change-password'
+    | '/confidentialite'
     | '/forgot-password'
     | '/login'
     | '/onboarding'
     | '/reset-password'
     | '/signup'
+    | '/suppression-compte'
     | '/verify-email'
     | '/accounting'
     | '/admin'
@@ -475,11 +497,13 @@ export interface FileRouteTypes {
     | '/'
     | '/_app'
     | '/change-password'
+    | '/confidentialite'
     | '/forgot-password'
     | '/login'
     | '/onboarding'
     | '/reset-password'
     | '/signup'
+    | '/suppression-compte'
     | '/verify-email'
     | '/_app/accounting'
     | '/_app/admin'
@@ -519,11 +543,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   ChangePasswordRoute: typeof ChangePasswordRoute
+  ConfidentialiteRoute: typeof ConfidentialiteRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  SuppressionCompteRoute: typeof SuppressionCompteRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   DisplayBranchIdRoute: typeof DisplayBranchIdRoute
   PrintPayslipPayslipIdRoute: typeof PrintPayslipPayslipIdRoute
@@ -536,6 +562,13 @@ declare module '@tanstack/react-router' {
       path: '/verify-email'
       fullPath: '/verify-email'
       preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suppression-compte': {
+      id: '/suppression-compte'
+      path: '/suppression-compte'
+      fullPath: '/suppression-compte'
+      preLoaderRoute: typeof SuppressionCompteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -571,6 +604,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/confidentialite': {
+      id: '/confidentialite'
+      path: '/confidentialite'
+      fullPath: '/confidentialite'
+      preLoaderRoute: typeof ConfidentialiteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/change-password': {
@@ -943,11 +983,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   ChangePasswordRoute: ChangePasswordRoute,
+  ConfidentialiteRoute: ConfidentialiteRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  SuppressionCompteRoute: SuppressionCompteRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   DisplayBranchIdRoute: DisplayBranchIdRoute,
   PrintPayslipPayslipIdRoute: PrintPayslipPayslipIdRoute,

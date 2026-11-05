@@ -1,4 +1,4 @@
-package km.ankibapay.employee
+package online.mshahara.employee
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
