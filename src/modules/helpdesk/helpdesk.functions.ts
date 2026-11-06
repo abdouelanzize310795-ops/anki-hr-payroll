@@ -1,7 +1,7 @@
 import { createServerFn, createServerOnlyFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getPublicEnv } from "@/lib/supabase/env";
+import { publicObjectUrl } from "@/lib/db/storage";
 import { createHelpdeskTicketSchema, transitionHelpdeskSchema } from "./schemas";
 import type { HelpdeskTicket, HelpdeskTicketWithRelations } from "./types";
 
@@ -21,8 +21,7 @@ function sanitizeFileName(name: string): string {
 }
 
 function publicPhotoUrl(path: string): string {
-  const { VITE_SUPABASE_URL } = getPublicEnv();
-  return `${VITE_SUPABASE_URL}/storage/v1/object/public/${PHOTO_BUCKET}/${path}`;
+  return publicObjectUrl(PHOTO_BUCKET, path);
 }
 
 export const listHelpdeskTickets = createServerFn({ method: "GET" })

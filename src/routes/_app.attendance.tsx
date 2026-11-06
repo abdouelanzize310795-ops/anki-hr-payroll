@@ -28,6 +28,7 @@ import {
   upsertAttendance,
 } from "@/modules/attendance/attendance.functions";
 import { AttendanceForm } from "@/modules/attendance/components/AttendanceForm";
+import { SecureAttendancePanel } from "@/modules/attendance/components/SecureAttendancePanel";
 import {
   attendanceStatusToPill,
   formatMinutes,
@@ -119,7 +120,7 @@ function AttendancePage() {
         data: { companyId: effectiveCompanyId, status: "active" },
       });
       setEmployees(emps);
-      const mine = emps.find((e) => e.user_id === auth.user?.id) ?? (isEmployee ? emps[0] : undefined);
+      const mine = emps.find((e) => e.user_id === auth.id) ?? (isEmployee ? emps[0] : undefined);
       if (mine) setMyEmployeeId(mine.id);
       if (isEmployee) {
         if (mine) setClockEmployeeId(mine.id);
@@ -127,7 +128,7 @@ function AttendancePage() {
         setClockEmployeeId(emps[0].id);
       }
     })();
-  }, [effectiveCompanyId, isEmployee, auth.user?.id]);
+  }, [effectiveCompanyId, isEmployee, auth.id]);
 
   useEffect(() => {
     void load();
@@ -226,16 +227,9 @@ function AttendancePage() {
               </Dialog>
             )}
             {isEmployee && (
-              <>
-                <Button size="sm" disabled={busy || !myEmployeeId} onClick={() => void handleClock("in")}>
-                  <LogIn className="mr-1.5 h-4 w-4" />
-                  Entrée
-                </Button>
-                <Button size="sm" variant="outline" disabled={busy || !myEmployeeId} onClick={() => void handleClock("out")}>
-                  <LogOut className="mr-1.5 h-4 w-4" />
-                  Sortie
-                </Button>
-              </>
+              <p className="text-sm text-muted-foreground">
+                Le pointage se fait depuis l’application mobile, sur le lieu de travail.
+              </p>
             )}
           </div>
         }
@@ -259,7 +253,7 @@ function AttendancePage() {
       </div>
 
       {isEmployee && todayRecord && (
-        <p className="mt-4 text-sm text-muted-foreground">
+        <div className="mt-4 text-sm text-muted-foreground">
           Aujourd’hui ({today}) : entrée{" "}
           <span className="font-mono text-foreground">{todayRecord.check_in?.slice(0, 5) ?? "—"}</span>
           {" · "}
@@ -267,7 +261,7 @@ function AttendancePage() {
           <span className="font-mono text-foreground">{todayRecord.check_out?.slice(0, 5) ?? "—"}</span>
           {" · "}
           <StatusPill status={attendanceStatusToPill(todayRecord.status)} />
-        </p>
+        </div>
       )}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -412,6 +406,12 @@ function AttendancePage() {
           </div>
         </SectionCard>
       </div>
+
+      {canManage && effectiveCompanyId ? (
+        <div className="mt-6">
+          <SecureAttendancePanel companyId={effectiveCompanyId} />
+        </div>
+      ) : null}
     </>
   );
 }

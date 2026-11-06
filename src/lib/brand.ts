@@ -1,9 +1,9 @@
 /**
- * AnkibaPay brand tokens — source of truth from Charte graphique v1.0
+ * Mshahara brand tokens — source of truth from Charte graphique v1.0
  * Never invent alternate brand colors or fonts.
  */
 export const brand = {
-  name: "AnkibaPay",
+  name: "Mshahara",
   tagline: "Paie · RH · Pointage",
   taglineEn: "Smart HR • Smart Payroll",
   colors: {

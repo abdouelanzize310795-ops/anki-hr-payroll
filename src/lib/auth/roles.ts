@@ -16,7 +16,7 @@ export function isManagerLike(role: AppRole): boolean {
 
 /** Routes allowed for platform console (ops SaaS). */
 export const PLATFORM_ADMIN_ROUTES = new Set([
-  "/",
+  "/dashboard",
   "/admin",
   "/companies",
   "/company-access",
@@ -27,33 +27,33 @@ export const PLATFORM_ADMIN_ROUTES = new Set([
 /** Nav URLs allowed per role — console ops ≠ workspace RH. */
 export const NAV_BY_ROLE: Record<AppRole, Set<string>> = {
   platform_admin: new Set([
-    "/",
+    "/dashboard",
     "/admin",
     "/companies",
     "/notifications",
     "/settings",
   ]),
   employer: new Set([
-    "/", "/companies", "/employees", "/recruitment", "/contracts",
+    "/dashboard", "/companies", "/employees", "/recruitment", "/contracts",
     "/attendance", "/leave", "/helpdesk", "/payroll", "/accounting", "/transfers",
     "/training", "/performance", "/tasks",
     "/documents", "/assets", "/reports", "/notifications",
     "/ai", "/subscriptions", "/settings",
   ]),
   hr: new Set([
-    "/", "/companies", "/employees", "/recruitment", "/contracts",
+    "/dashboard", "/companies", "/employees", "/recruitment", "/contracts",
     "/attendance", "/leave", "/helpdesk", "/payroll", "/accounting", "/transfers",
     "/training", "/performance", "/tasks",
     "/documents", "/assets", "/reports", "/notifications",
     "/ai", "/subscriptions", "/settings",
   ]),
   manager: new Set([
-    "/", "/employees", "/attendance", "/leave", "/helpdesk", "/tasks",
+    "/dashboard", "/employees", "/attendance", "/leave", "/helpdesk", "/tasks",
     "/performance", "/documents", "/reports", "/notifications",
     "/ai", "/settings",
   ]),
   employee: new Set([
-    "/", "/attendance", "/leave", "/helpdesk", "/tasks",
+    "/dashboard", "/attendance", "/leave", "/helpdesk", "/tasks",
     "/contracts", "/payroll", "/documents", "/notifications",
     "/ai", "/settings",
   ]),
@@ -91,7 +91,7 @@ export const WORKFLOWS: Record<AppRole, { badge: string; title: string; steps: W
   },
   employee: {
     badge: "Parcours collaborateur",
-    title: "Votre quotidien AnkibaPay",
+    title: "Votre quotidien Mshahara",
     steps: [
       { n: 1, title: "Recevoir ses identifiants", subtitle: "Accès e-mail à l’application", href: "/settings" },
       { n: 2, title: "Se connecter et signer", subtitle: "Mot de passe et contrat", href: "/contracts" },
@@ -104,7 +104,7 @@ export const WORKFLOWS: Record<AppRole, { badge: string; title: string; steps: W
     badge: "Parcours manager",
     title: "Piloter votre équipe",
     steps: [
-      { n: 1, title: "Se connecter", subtitle: "Application web", href: "/" },
+      { n: 1, title: "Se connecter", subtitle: "Application web", href: "/dashboard" },
       { n: 2, title: "Consulter l’équipe", subtitle: "Présence, tâches, congés", href: "/attendance" },
       { n: 3, title: "Valider les demandes", subtitle: "Congés et justificatifs", href: "/leave" },
       { n: 4, title: "Suivre la performance", subtitle: "Évaluations et objectifs", href: "/performance" },
@@ -112,7 +112,7 @@ export const WORKFLOWS: Record<AppRole, { badge: string; title: string; steps: W
   },
   platform_admin: {
     badge: "Console plateforme",
-    title: "Opérer AnkibaPay (SaaS)",
+    title: "Opérer Mshahara (SaaS)",
     steps: [
       { n: 1, title: "Suivre les inscriptions", subtitle: "Paiements et dossiers", href: "/admin" },
       { n: 2, title: "Valider les entreprises", subtitle: "Approuver ou refuser", href: "/admin" },

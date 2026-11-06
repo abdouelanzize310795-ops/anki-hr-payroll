@@ -438,7 +438,7 @@ export const recruitmentStats = createServerFn({ method: "GET" })
       openRoles,
       candidates,
       activePipe,
-      avgDaysDays: avgDays,
+      avgHireDays: avgDays,
       offerRate,
       hiredCount: hired.length,
     };

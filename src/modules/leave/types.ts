@@ -16,6 +16,11 @@ export type LeaveType = {
   requires_approval: boolean;
   deducts_balance: boolean;
   default_entitlement_days: number;
+  /** "monthly": earned month by month (monthly_accrual_days); "annual": credited at once. */
+  accrual_mode: "annual" | "monthly";
+  monthly_accrual_days: number;
+  /** Max days carried over to next year (null = unlimited). */
+  max_carryover_days: number | null;
   color: string;
   is_active: boolean;
   sort_order: number;

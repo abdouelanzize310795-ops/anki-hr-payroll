@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +37,8 @@ export function CompanyForm({
   const [logoPreview, setLogoPreview] = useState<string | null>(existingLogoUrl ?? null);
 
   const form = useForm<CreateCompanyInput>({
-    resolver: zodResolver(createCompanySchema),
+    // Schema defaults make some input fields optional; the parsed values are CreateCompanyInput.
+    resolver: zodResolver(createCompanySchema) as unknown as Resolver<CreateCompanyInput>,
     defaultValues: {
       legalName: "",
       tradeName: "",
@@ -114,7 +115,7 @@ export function CompanyForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="legalName">Raison sociale *</Label>
-          <Input id="legalName" placeholder="SARL Ankiba Services" {...form.register("legalName")} />
+          <Input id="legalName" placeholder="SARL Moroni Services" {...form.register("legalName")} />
           {form.formState.errors.legalName && (
             <p className="text-xs text-destructive">{form.formState.errors.legalName.message}</p>
           )}

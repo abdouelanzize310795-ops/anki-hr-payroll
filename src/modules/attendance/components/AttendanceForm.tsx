@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,8 @@ export function AttendanceForm({
   const today = defaultWorkDate ?? new Date().toISOString().slice(0, 10);
 
   const form = useForm<UpsertAttendanceInput>({
-    resolver: zodResolver(upsertAttendanceSchema),
+    // Schema defaults make some input fields optional; the parsed values are UpsertAttendanceInput.
+    resolver: zodResolver(upsertAttendanceSchema) as unknown as Resolver<UpsertAttendanceInput>,
     defaultValues: {
       companyId: lockedCompanyId ?? "",
       employeeId: "",

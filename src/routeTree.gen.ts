@@ -9,12 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as SuppressionCompteRouteImport } from './routes/suppression-compte'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as ConfidentialiteRouteImport } from './routes/confidentialite'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as AppRouteImport } from './routes/_app'
-import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as DisplayBranchIdRouteImport } from './routes/display.$branchId'
 import { Route as AppTransfersRouteImport } from './routes/_app.transfers'
 import { Route as AppTrainingRouteImport } from './routes/_app.training'
 import { Route as AppTasksRouteImport } from './routes/_app.tasks'
@@ -29,6 +35,7 @@ import { Route as AppLeaveRouteImport } from './routes/_app.leave'
 import { Route as AppHelpdeskRouteImport } from './routes/_app.helpdesk'
 import { Route as AppEmployeesRouteImport } from './routes/_app.employees'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
+import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppContractsRouteImport } from './routes/_app.contracts'
 import { Route as AppCompanyAccessRouteImport } from './routes/_app.company-access'
 import { Route as AppCompaniesRouteImport } from './routes/_app.companies'
@@ -37,16 +44,33 @@ import { Route as AppAssetsRouteImport } from './routes/_app.assets'
 import { Route as AppAiRouteImport } from './routes/_app.ai'
 import { Route as AppAdminRouteImport } from './routes/_app.admin'
 import { Route as AppAccountingRouteImport } from './routes/_app.accounting'
+import { Route as PrintPayslipPayslipIdRouteImport } from './routes/print.payslip.$payslipId'
 import { Route as AppTransfersBatchIdRouteImport } from './routes/_app.transfers.$batchId'
+import { Route as AppPayrollTemplateRouteImport } from './routes/_app.payroll.template'
 import { Route as AppPayrollRunIdRouteImport } from './routes/_app.payroll.$runId'
 import { Route as AppEmployeesEmployeeIdRouteImport } from './routes/_app.employees.$employeeId'
 import { Route as AppContractsContractIdRouteImport } from './routes/_app.contracts.$contractId'
 import { Route as AppCompaniesCompanyIdRouteImport } from './routes/_app.companies.$companyId'
 import { Route as AppPayrollPayslipPayslipIdRouteImport } from './routes/_app.payroll.payslip.$payslipId'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuppressionCompteRoute = SuppressionCompteRouteImport.update({
+  id: '/suppression-compte',
+  path: '/suppression-compte',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -59,6 +83,16 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfidentialiteRoute = ConfidentialiteRouteImport.update({
+  id: '/confidentialite',
+  path: '/confidentialite',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChangePasswordRoute = ChangePasswordRouteImport.update({
   id: '/change-password',
   path: '/change-password',
@@ -68,10 +102,15 @@ const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AppIndexRoute = AppIndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AppRoute,
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DisplayBranchIdRoute = DisplayBranchIdRouteImport.update({
+  id: '/display/$branchId',
+  path: '/display/$branchId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AppTransfersRoute = AppTransfersRouteImport.update({
   id: '/transfers',
@@ -143,6 +182,11 @@ const AppDocumentsRoute = AppDocumentsRouteImport.update({
   path: '/documents',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppContractsRoute = AppContractsRouteImport.update({
   id: '/contracts',
   path: '/contracts',
@@ -183,10 +227,20 @@ const AppAccountingRoute = AppAccountingRouteImport.update({
   path: '/accounting',
   getParentRoute: () => AppRoute,
 } as any)
+const PrintPayslipPayslipIdRoute = PrintPayslipPayslipIdRouteImport.update({
+  id: '/print/payslip/$payslipId',
+  path: '/print/payslip/$payslipId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppTransfersBatchIdRoute = AppTransfersBatchIdRouteImport.update({
   id: '/$batchId',
   path: '/$batchId',
   getParentRoute: () => AppTransfersRoute,
+} as any)
+const AppPayrollTemplateRoute = AppPayrollTemplateRouteImport.update({
+  id: '/template',
+  path: '/template',
+  getParentRoute: () => AppPayrollRoute,
 } as any)
 const AppPayrollRunIdRoute = AppPayrollRunIdRouteImport.update({
   id: '/$runId',
@@ -216,11 +270,16 @@ const AppPayrollPayslipPayslipIdRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof AppIndexRoute
+  '/': typeof IndexRoute
   '/change-password': typeof ChangePasswordRoute
+  '/confidentialite': typeof ConfidentialiteRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/suppression-compte': typeof SuppressionCompteRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/accounting': typeof AppAccountingRoute
   '/admin': typeof AppAdminRoute
   '/ai': typeof AppAiRoute
@@ -229,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/companies': typeof AppCompaniesRouteWithChildren
   '/company-access': typeof AppCompanyAccessRoute
   '/contracts': typeof AppContractsRouteWithChildren
+  '/dashboard': typeof AppDashboardRoute
   '/documents': typeof AppDocumentsRoute
   '/employees': typeof AppEmployeesRouteWithChildren
   '/helpdesk': typeof AppHelpdeskRoute
@@ -243,18 +303,27 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof AppTasksRoute
   '/training': typeof AppTrainingRoute
   '/transfers': typeof AppTransfersRouteWithChildren
+  '/display/$branchId': typeof DisplayBranchIdRoute
   '/companies/$companyId': typeof AppCompaniesCompanyIdRoute
   '/contracts/$contractId': typeof AppContractsContractIdRoute
   '/employees/$employeeId': typeof AppEmployeesEmployeeIdRoute
   '/payroll/$runId': typeof AppPayrollRunIdRoute
+  '/payroll/template': typeof AppPayrollTemplateRoute
   '/transfers/$batchId': typeof AppTransfersBatchIdRoute
+  '/print/payslip/$payslipId': typeof PrintPayslipPayslipIdRoute
   '/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/change-password': typeof ChangePasswordRoute
+  '/confidentialite': typeof ConfidentialiteRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/suppression-compte': typeof SuppressionCompteRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/accounting': typeof AppAccountingRoute
   '/admin': typeof AppAdminRoute
   '/ai': typeof AppAiRoute
@@ -263,6 +332,7 @@ export interface FileRoutesByTo {
   '/companies': typeof AppCompaniesRouteWithChildren
   '/company-access': typeof AppCompanyAccessRoute
   '/contracts': typeof AppContractsRouteWithChildren
+  '/dashboard': typeof AppDashboardRoute
   '/documents': typeof AppDocumentsRoute
   '/employees': typeof AppEmployeesRouteWithChildren
   '/helpdesk': typeof AppHelpdeskRoute
@@ -277,21 +347,29 @@ export interface FileRoutesByTo {
   '/tasks': typeof AppTasksRoute
   '/training': typeof AppTrainingRoute
   '/transfers': typeof AppTransfersRouteWithChildren
-  '/': typeof AppIndexRoute
+  '/display/$branchId': typeof DisplayBranchIdRoute
   '/companies/$companyId': typeof AppCompaniesCompanyIdRoute
   '/contracts/$contractId': typeof AppContractsContractIdRoute
   '/employees/$employeeId': typeof AppEmployeesEmployeeIdRoute
   '/payroll/$runId': typeof AppPayrollRunIdRoute
+  '/payroll/template': typeof AppPayrollTemplateRoute
   '/transfers/$batchId': typeof AppTransfersBatchIdRoute
+  '/print/payslip/$payslipId': typeof PrintPayslipPayslipIdRoute
   '/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
+  '/confidentialite': typeof ConfidentialiteRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
+  '/suppression-compte': typeof SuppressionCompteRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/_app/accounting': typeof AppAccountingRoute
   '/_app/admin': typeof AppAdminRoute
   '/_app/ai': typeof AppAiRoute
@@ -300,6 +378,7 @@ export interface FileRoutesById {
   '/_app/companies': typeof AppCompaniesRouteWithChildren
   '/_app/company-access': typeof AppCompanyAccessRoute
   '/_app/contracts': typeof AppContractsRouteWithChildren
+  '/_app/dashboard': typeof AppDashboardRoute
   '/_app/documents': typeof AppDocumentsRoute
   '/_app/employees': typeof AppEmployeesRouteWithChildren
   '/_app/helpdesk': typeof AppHelpdeskRoute
@@ -314,12 +393,14 @@ export interface FileRoutesById {
   '/_app/tasks': typeof AppTasksRoute
   '/_app/training': typeof AppTrainingRoute
   '/_app/transfers': typeof AppTransfersRouteWithChildren
-  '/_app/': typeof AppIndexRoute
+  '/display/$branchId': typeof DisplayBranchIdRoute
   '/_app/companies/$companyId': typeof AppCompaniesCompanyIdRoute
   '/_app/contracts/$contractId': typeof AppContractsContractIdRoute
   '/_app/employees/$employeeId': typeof AppEmployeesEmployeeIdRoute
   '/_app/payroll/$runId': typeof AppPayrollRunIdRoute
+  '/_app/payroll/template': typeof AppPayrollTemplateRoute
   '/_app/transfers/$batchId': typeof AppTransfersBatchIdRoute
+  '/print/payslip/$payslipId': typeof PrintPayslipPayslipIdRoute
   '/_app/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
 }
 export interface FileRouteTypes {
@@ -327,9 +408,14 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/change-password'
+    | '/confidentialite'
+    | '/forgot-password'
     | '/login'
     | '/onboarding'
+    | '/reset-password'
     | '/signup'
+    | '/suppression-compte'
+    | '/verify-email'
     | '/accounting'
     | '/admin'
     | '/ai'
@@ -338,6 +424,7 @@ export interface FileRouteTypes {
     | '/companies'
     | '/company-access'
     | '/contracts'
+    | '/dashboard'
     | '/documents'
     | '/employees'
     | '/helpdesk'
@@ -352,18 +439,27 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/training'
     | '/transfers'
+    | '/display/$branchId'
     | '/companies/$companyId'
     | '/contracts/$contractId'
     | '/employees/$employeeId'
     | '/payroll/$runId'
+    | '/payroll/template'
     | '/transfers/$batchId'
+    | '/print/payslip/$payslipId'
     | '/payroll/payslip/$payslipId'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/change-password'
+    | '/confidentialite'
+    | '/forgot-password'
     | '/login'
     | '/onboarding'
+    | '/reset-password'
     | '/signup'
+    | '/suppression-compte'
+    | '/verify-email'
     | '/accounting'
     | '/admin'
     | '/ai'
@@ -372,6 +468,7 @@ export interface FileRouteTypes {
     | '/companies'
     | '/company-access'
     | '/contracts'
+    | '/dashboard'
     | '/documents'
     | '/employees'
     | '/helpdesk'
@@ -386,20 +483,28 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/training'
     | '/transfers'
-    | '/'
+    | '/display/$branchId'
     | '/companies/$companyId'
     | '/contracts/$contractId'
     | '/employees/$employeeId'
     | '/payroll/$runId'
+    | '/payroll/template'
     | '/transfers/$batchId'
+    | '/print/payslip/$payslipId'
     | '/payroll/payslip/$payslipId'
   id:
     | '__root__'
+    | '/'
     | '/_app'
     | '/change-password'
+    | '/confidentialite'
+    | '/forgot-password'
     | '/login'
     | '/onboarding'
+    | '/reset-password'
     | '/signup'
+    | '/suppression-compte'
+    | '/verify-email'
     | '/_app/accounting'
     | '/_app/admin'
     | '/_app/ai'
@@ -408,6 +513,7 @@ export interface FileRouteTypes {
     | '/_app/companies'
     | '/_app/company-access'
     | '/_app/contracts'
+    | '/_app/dashboard'
     | '/_app/documents'
     | '/_app/employees'
     | '/_app/helpdesk'
@@ -422,30 +528,61 @@ export interface FileRouteTypes {
     | '/_app/tasks'
     | '/_app/training'
     | '/_app/transfers'
-    | '/_app/'
+    | '/display/$branchId'
     | '/_app/companies/$companyId'
     | '/_app/contracts/$contractId'
     | '/_app/employees/$employeeId'
     | '/_app/payroll/$runId'
+    | '/_app/payroll/template'
     | '/_app/transfers/$batchId'
+    | '/print/payslip/$payslipId'
     | '/_app/payroll/payslip/$payslipId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   ChangePasswordRoute: typeof ChangePasswordRoute
+  ConfidentialiteRoute: typeof ConfidentialiteRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
+  SuppressionCompteRoute: typeof SuppressionCompteRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
+  DisplayBranchIdRoute: typeof DisplayBranchIdRoute
+  PrintPayslipPayslipIdRoute: typeof PrintPayslipPayslipIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suppression-compte': {
+      id: '/suppression-compte'
+      path: '/suppression-compte'
+      fullPath: '/suppression-compte'
+      preLoaderRoute: typeof SuppressionCompteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -462,6 +599,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/confidentialite': {
+      id: '/confidentialite'
+      path: '/confidentialite'
+      fullPath: '/confidentialite'
+      preLoaderRoute: typeof ConfidentialiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/change-password': {
       id: '/change-password'
       path: '/change-password'
@@ -476,12 +627,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_app/': {
-      id: '/_app/'
+    '/': {
+      id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof AppIndexRouteImport
-      parentRoute: typeof AppRoute
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/display/$branchId': {
+      id: '/display/$branchId'
+      path: '/display/$branchId'
+      fullPath: '/display/$branchId'
+      preLoaderRoute: typeof DisplayBranchIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_app/transfers': {
       id: '/_app/transfers'
@@ -581,6 +739,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDocumentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/contracts': {
       id: '/_app/contracts'
       path: '/contracts'
@@ -637,12 +802,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/print/payslip/$payslipId': {
+      id: '/print/payslip/$payslipId'
+      path: '/print/payslip/$payslipId'
+      fullPath: '/print/payslip/$payslipId'
+      preLoaderRoute: typeof PrintPayslipPayslipIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/transfers/$batchId': {
       id: '/_app/transfers/$batchId'
       path: '/$batchId'
       fullPath: '/transfers/$batchId'
       preLoaderRoute: typeof AppTransfersBatchIdRouteImport
       parentRoute: typeof AppTransfersRoute
+    }
+    '/_app/payroll/template': {
+      id: '/_app/payroll/template'
+      path: '/template'
+      fullPath: '/payroll/template'
+      preLoaderRoute: typeof AppPayrollTemplateRouteImport
+      parentRoute: typeof AppPayrollRoute
     }
     '/_app/payroll/$runId': {
       id: '/_app/payroll/$runId'
@@ -720,11 +899,13 @@ const AppEmployeesRouteWithChildren = AppEmployeesRoute._addFileChildren(
 
 interface AppPayrollRouteChildren {
   AppPayrollRunIdRoute: typeof AppPayrollRunIdRoute
+  AppPayrollTemplateRoute: typeof AppPayrollTemplateRoute
   AppPayrollPayslipPayslipIdRoute: typeof AppPayrollPayslipPayslipIdRoute
 }
 
 const AppPayrollRouteChildren: AppPayrollRouteChildren = {
   AppPayrollRunIdRoute: AppPayrollRunIdRoute,
+  AppPayrollTemplateRoute: AppPayrollTemplateRoute,
   AppPayrollPayslipPayslipIdRoute: AppPayrollPayslipPayslipIdRoute,
 }
 
@@ -753,6 +934,7 @@ interface AppRouteChildren {
   AppCompaniesRoute: typeof AppCompaniesRouteWithChildren
   AppCompanyAccessRoute: typeof AppCompanyAccessRoute
   AppContractsRoute: typeof AppContractsRouteWithChildren
+  AppDashboardRoute: typeof AppDashboardRoute
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppEmployeesRoute: typeof AppEmployeesRouteWithChildren
   AppHelpdeskRoute: typeof AppHelpdeskRoute
@@ -767,7 +949,6 @@ interface AppRouteChildren {
   AppTasksRoute: typeof AppTasksRoute
   AppTrainingRoute: typeof AppTrainingRoute
   AppTransfersRoute: typeof AppTransfersRouteWithChildren
-  AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -779,6 +960,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCompaniesRoute: AppCompaniesRouteWithChildren,
   AppCompanyAccessRoute: AppCompanyAccessRoute,
   AppContractsRoute: AppContractsRouteWithChildren,
+  AppDashboardRoute: AppDashboardRoute,
   AppDocumentsRoute: AppDocumentsRoute,
   AppEmployeesRoute: AppEmployeesRouteWithChildren,
   AppHelpdeskRoute: AppHelpdeskRoute,
@@ -793,17 +975,24 @@ const AppRouteChildren: AppRouteChildren = {
   AppTasksRoute: AppTasksRoute,
   AppTrainingRoute: AppTrainingRoute,
   AppTransfersRoute: AppTransfersRouteWithChildren,
-  AppIndexRoute: AppIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   ChangePasswordRoute: ChangePasswordRoute,
+  ConfidentialiteRoute: ConfidentialiteRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
+  SuppressionCompteRoute: SuppressionCompteRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
+  DisplayBranchIdRoute: DisplayBranchIdRoute,
+  PrintPayslipPayslipIdRoute: PrintPayslipPayslipIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

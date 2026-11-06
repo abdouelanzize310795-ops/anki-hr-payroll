@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getPublicEnv } from "@/lib/supabase/env";
+import { publicObjectUrl } from "@/lib/db/storage";
 import {
   createCompanySchema,
   prepareLogoUploadSchema,
   updateCompanySchema,
+  logoUrlSchema,
 } from "./schemas";
 import type { Branch, Company, CompanyWithMeta, Country, Currency, Department } from "./types";
 
@@ -27,8 +28,7 @@ function sanitizeFileName(name: string): string {
 }
 
 function publicLogoUrl(path: string): string {
-  const { VITE_SUPABASE_URL } = getPublicEnv();
-  return `${VITE_SUPABASE_URL}/storage/v1/object/public/${LOGO_BUCKET}/${path}`;
+  return publicObjectUrl(LOGO_BUCKET, path);
 }
 
 export const listCountries = createServerFn({ method: "GET" }).handler(async (): Promise<Country[]> => {
@@ -265,6 +265,12 @@ export const prepareCompanyLogoUpload = createServerFn({ method: "POST" })
     await requireUserId();
     const supabase = createSupabaseServerClient();
 
+    // Only the company's employer/HR (or a platform admin) may upload its logo.
+    const { data: canManage } = await supabase.rpc("can_manage_company", { target: data.companyId });
+    if (canManage !== true) {
+      return { ok: false, message: "Vous ne pouvez pas modifier le logo de cette entreprise" };
+    }
+
     const ext =
       data.mimeType === "image/png"
         ? "png"
@@ -299,7 +305,7 @@ export const setCompanyLogoUrl = createServerFn({ method: "POST" })
   .validator(
     z.object({
       companyId: z.string().uuid(),
-      logoUrl: z.string().url(),
+      logoUrl: logoUrlSchema,
     }),
   )
   .handler(async ({ data }): Promise<ActionResult<Company>> => {

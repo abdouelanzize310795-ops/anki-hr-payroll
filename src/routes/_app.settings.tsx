@@ -257,7 +257,7 @@ function SettingsPage() {
       setStaff(await listCompanyStaff({ data: { companyId } }));
       flash(
         result.data.created
-          ? `Compte ${result.data.role === "hr" ? "RH" : "manager"} créé`
+          ? `Compte ${result.data.role === "hr" ? "RH" : "manager"} créé${result.data.mailed ? " — identifiants envoyés par e-mail" : ""}`
           : `Compte lié en ${result.data.role === "hr" ? "RH" : "manager"}`,
       );
     } finally {

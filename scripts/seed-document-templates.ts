@@ -106,7 +106,7 @@ for (const account of accounts) {
           employee_id: employeeId,
           category: template.category,
           title: template.title,
-          description: `Modèle AnkibaPay — ${template.description}`,
+          description: `Modèle Mshahara — ${template.description}`,
           file_name: safeName,
           mime_type: "text/html",
           file_size: bytes.byteLength,

@@ -27,7 +27,6 @@ import {
   payrollStats,
   payrollTrend,
 } from "@/modules/payroll/payroll.functions";
-import { PayrollComponentsPanel } from "@/modules/payroll/components/PayrollComponentsPanel";
 import {
   MONTHS_FR,
   payrollRunStatusPill,
@@ -158,6 +157,7 @@ function EmployerPayrollHome() {
     admin || auth.profile?.role === "employer" || auth.profile?.role === "hr";
 
   const now = useMemo(() => new Date(), []);
+  const [useAttendance, setUseAttendance] = useState(false);
   const [companies, setCompanies] = useState<CompanyWithMeta[]>([]);
   const [companyFilter, setCompanyFilter] = useState<string>(profileCompanyId ?? "all");
   const [runs, setRuns] = useState<PayrollRunWithMeta[]>([]);
@@ -223,7 +223,7 @@ function EmployerPayrollHome() {
     setError(null);
     try {
       const result = await createPayrollRun({
-        data: { companyId, year, month },
+        data: { companyId, year, month, useAttendance },
       });
       if (!result.ok) {
         setError(result.message);
@@ -249,31 +249,12 @@ function EmployerPayrollHome() {
         actions={
           <>
             {canManage && (
-              <Dialog open={openConfig} onOpenChange={setOpenConfig}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!effectiveCompanyId}
-                    title={!effectiveCompanyId ? "Sélectionnez une entreprise" : undefined}
-                  >
-                    <Settings2 className="mr-1.5 h-4 w-4" />
-                    Composants
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle className="font-display">Composants de paie</DialogTitle>
-                  </DialogHeader>
-                  {effectiveCompanyId && (
-                    <PayrollComponentsPanel
-                      companyId={effectiveCompanyId}
-                      components={components}
-                      onChanged={load}
-                    />
-                  )}
-                </DialogContent>
-              </Dialog>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/payroll/template">
+                  <Settings2 className="mr-1.5 h-4 w-4" />
+                  Bulletin & rubriques
+                </Link>
+              </Button>
             )}
             {canManage && (
               <Dialog open={openRun} onOpenChange={setOpenRun}>
@@ -325,6 +306,38 @@ function EmployerPayrollHome() {
                         />
                       </div>
                     </div>
+                    <fieldset className="space-y-2">
+                      <legend className="mb-2 text-sm font-medium">Pointage et salaires</legend>
+                      {[
+                        {
+                          value: false,
+                          title: "Ne pas prendre en compte le pointage",
+                          text: "Chaque employé reçoit son salaire de base complet, sans heures supplémentaires calculées.",
+                        },
+                        {
+                          value: true,
+                          title: "Prendre en compte le pointage",
+                          text: "Le salaire suit les heures pointées et les heures supplémentaires sont payées. Un employé sans pointage ce mois-là peut recevoir 0 de salaire de base.",
+                        },
+                      ].map((o) => (
+                        <label
+                          key={String(o.value)}
+                          className="flex cursor-pointer gap-3 rounded-lg border p-3 has-[:checked]:border-primary"
+                        >
+                          <input
+                            type="radio"
+                            name="use-attendance"
+                            className="mt-1"
+                            checked={useAttendance === o.value}
+                            onChange={() => setUseAttendance(o.value)}
+                          />
+                          <span>
+                            <span className="block text-sm font-medium">{o.title}</span>
+                            <span className="block text-xs text-muted-foreground">{o.text}</span>
+                          </span>
+                        </label>
+                      ))}
+                    </fieldset>
                     <Button className="w-full" disabled={creating} onClick={() => void handleCreate()}>
                       {creating ? "Création…" : "Créer le cycle"}
                     </Button>
@@ -477,6 +490,9 @@ function EmployerPayrollHome() {
                     </TableCell>
                     <TableCell>
                       <StatusPill status={payrollRunStatusPill[r.status]} />
+                      <span className="mt-1 block text-xs text-muted-foreground">
+                        {r.use_attendance ? "Selon le pointage" : "Salaire fixe"}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild>

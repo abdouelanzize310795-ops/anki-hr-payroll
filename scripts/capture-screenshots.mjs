@@ -1,5 +1,5 @@
 /**
- * Capture screenshots of AnkibaPay pages (local dev).
+ * Capture screenshots of Mshahara pages (local dev).
  * Usage: node scripts/capture-screenshots.mjs
  */
 import { chromium } from "playwright";

@@ -77,6 +77,10 @@ function EmployeesPage() {
   const lockedCompanyId = admin ? null : profileCompanyId;
   const importCompanyId = lockedCompanyId ?? (companyFilter !== "all" ? companyFilter : null);
 
+  // Bumped after each reload so the department panel picks up departments
+  // created from the employee form.
+  const [deptVersion, setDeptVersion] = useState(0);
+
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -94,6 +98,7 @@ function EmployeesPage() {
       ]);
       setEmployees(rows);
       setStats(s);
+      setDeptVersion((v) => v + 1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impossible de charger les employés");
     } finally {
@@ -296,6 +301,7 @@ function EmployeesPage() {
       {deptCompanyId && (canAssignDeptManagers || auth.profile?.role === "employer") && (
         <div className="mt-6">
           <DepartmentManagersPanel
+            key={deptVersion}
             companyId={deptCompanyId}
             canAssign={canAssignDeptManagers}
           />

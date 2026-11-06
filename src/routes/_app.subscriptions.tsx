@@ -44,7 +44,7 @@ const plans = [
     features: [
       "Jusqu’à 500 employés",
       "RH + paie + virements",
-      "Assistant AnkibaPay",
+      "Assistant Mshahara",
       "Support prioritaire",
       "Multi-entreprises",
     ],
@@ -181,7 +181,7 @@ function SubscriptionsPage() {
           expired
             ? "Période terminée — vos données sont conservées. Renouvelez pour débloquer l’accès."
             : approved
-              ? "Gérez votre plan AnkibaPay (période mensuelle)."
+              ? "Gérez votre plan Mshahara (période mensuelle)."
               : `Choisissez un plan, payez via M'Vola ou Poketra EXIM BANK, puis activation sous ${SUBSCRIPTION_SUPPORT.activationSlaHours} h.`
         }
       />

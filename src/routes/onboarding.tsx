@@ -1,10 +1,14 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { AnkibaPayLogo } from "@/components/brand/AnkibaPayLogo";
+import { useEffect, useState } from "react";
+import { MshaharaLogo } from "@/components/brand/MshaharaLogo";
 import { brand } from "@/lib/brand";
 import { getAuthSession, isPlatformAdmin } from "@/lib/auth/auth.functions";
 import { createCompany } from "@/modules/companies/company.functions";
 import { CompanyForm, type CompanyFormSubmit } from "@/modules/companies/components/CompanyForm";
 import { uploadCompanyLogoFile } from "@/modules/companies/upload-logo";
+import { TemplatePicker } from "@/modules/payroll/components/TemplatePicker";
+import { listPayslipTemplates, setCompanyTemplate } from "@/modules/payroll/template.functions";
+import { CLASSIC_TEMPLATE_ID, type PayslipTemplate } from "@/modules/payroll/template.types";
 
 export const Route = createFileRoute("/onboarding")({
   beforeLoad: async () => {
@@ -14,7 +18,7 @@ export const Route = createFileRoute("/onboarding")({
     }
     // Platform admin skips company onboarding
     if (isPlatformAdmin(session) || session.profile?.company_id) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
     return { auth: session };
   },
@@ -23,14 +27,32 @@ export const Route = createFileRoute("/onboarding")({
 
 function OnboardingPage() {
   const navigate = useNavigate();
+  const [templates, setTemplates] = useState<PayslipTemplate[]>([]);
+  const [templateId, setTemplateId] = useState<string>(CLASSIC_TEMPLATE_ID);
+
+  useEffect(() => {
+    listPayslipTemplates()
+      .then(setTemplates)
+      .catch(() => setTemplates([]));
+  }, []);
 
   const handleCreate = async ({ values, logoFile }: CompanyFormSubmit) => {
     const result = await createCompany({ data: values });
     if (!result.ok) {
       throw new Error(result.message);
     }
+    // The company now exists: a failed logo or template must not keep the user
+    // on this form (submitting again would create a second company). Both can
+    // be set later from the company page.
     if (logoFile) {
-      await uploadCompanyLogoFile(result.data.id, logoFile);
+      await uploadCompanyLogoFile(result.data.id, logoFile).catch((err) =>
+        console.error("[onboarding] logo", err),
+      );
+    }
+    if (templateId !== CLASSIC_TEMPLATE_ID) {
+      await setCompanyTemplate({ data: { companyId: result.data.id, templateId } }).catch((err) =>
+        console.error("[onboarding] modèle", err),
+      );
     }
     await navigate({ to: "/subscriptions" });
   };
@@ -44,9 +66,9 @@ function OnboardingPage() {
             "radial-gradient(ellipse 70% 45% at 10% 0%, color-mix(in srgb, #0E4C56 28%, transparent), transparent), radial-gradient(ellipse 50% 40% at 100% 100%, color-mix(in srgb, #E8A93B 20%, transparent), transparent)",
         }}
       />
-      <div className="relative mx-auto w-full max-w-2xl">
+      <div className="relative mx-auto w-full max-w-5xl">
         <div className="mb-8 text-center">
-          <AnkibaPayLogo variant="full" className="mx-auto h-12 w-auto" />
+          <MshaharaLogo variant="full" className="mx-auto h-12 w-auto" />
           <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.2em] text-reef">
             {brand.tagline}
           </p>
@@ -63,7 +85,18 @@ function OnboardingPage() {
           </p>
           <div className="ridge-divider mt-4" aria-hidden />
 
-          <div className="mt-6">
+          {templates.length > 0 ? (
+            <div className="mt-6">
+              <h2 className="font-display text-lg font-semibold text-primary">Modèle de bulletin de paie</h2>
+              <p className="mb-3 text-sm text-muted-foreground">
+                Choisissez l’apparence de vos bulletins. Vous pourrez la personnaliser plus tard (Paie → Modèle de bulletin).
+              </p>
+              <TemplatePicker templates={templates} value={templateId} onChange={setTemplateId} />
+            </div>
+          ) : null}
+
+          <div className="mt-8">
+            <h2 className="mb-3 font-display text-lg font-semibold text-primary">Informations de l’entreprise</h2>
             <CompanyForm submitLabel="Créer mon entreprise" onSubmit={handleCreate} />
           </div>
         </div>

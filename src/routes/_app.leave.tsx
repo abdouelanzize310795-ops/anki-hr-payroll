@@ -25,6 +25,7 @@ import {
   transitionLeaveRequest,
 } from "@/modules/leave/leave.functions";
 import { LeaveRequestForm } from "@/modules/leave/components/LeaveRequestForm";
+import { LeaveAccrualSettings } from "@/modules/leave/components/LeaveAccrualSettings";
 import {
   leaveStatusToPill,
   type LeaveBalanceWithType,
@@ -444,6 +445,12 @@ function LeavePage() {
           )}
         </SectionCard>
       </div>
+
+      {canManageHr && effectiveCompanyId ? (
+        <div className="mt-6">
+          <LeaveAccrualSettings companyId={effectiveCompanyId} />
+        </div>
+      ) : null}
     </>
   );
 }

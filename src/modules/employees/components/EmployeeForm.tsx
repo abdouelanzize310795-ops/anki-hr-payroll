@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +36,8 @@ export function EmployeeForm({
   const today = new Date().toISOString().slice(0, 10);
 
   const form = useForm<CreateEmployeeInput>({
-    resolver: zodResolver(createEmployeeSchema),
+    // Schema defaults make some input fields optional; the parsed values are CreateEmployeeInput.
+    resolver: zodResolver(createEmployeeSchema) as unknown as Resolver<CreateEmployeeInput>,
     defaultValues: {
       companyId: lockedCompanyId ?? "",
       branchId: null,
@@ -192,7 +193,11 @@ export function EmployeeForm({
           <Label>Établissement</Label>
           <Select
             value={form.watch("branchId") ?? "none"}
-            onValueChange={(v) => form.setValue("branchId", v === "none" ? null : v)}
+            onValueChange={(v) => {
+              // Radix sends "" when the options change (e.g. a department just added): keep the value.
+              if (v === "") return;
+              form.setValue("branchId", v === "none" ? null : v);
+            }}
           >
             <SelectTrigger><SelectValue placeholder="Établissement" /></SelectTrigger>
             <SelectContent>
@@ -208,7 +213,11 @@ export function EmployeeForm({
           <Label>Département</Label>
           <Select
             value={form.watch("departmentId") ?? "none"}
-            onValueChange={(v) => form.setValue("departmentId", v === "none" ? null : v)}
+            onValueChange={(v) => {
+              // Radix sends "" when the options change (e.g. a department just added): keep the value.
+              if (v === "") return;
+              form.setValue("departmentId", v === "none" ? null : v);
+            }}
           >
             <SelectTrigger><SelectValue placeholder="Département" /></SelectTrigger>
             <SelectContent>

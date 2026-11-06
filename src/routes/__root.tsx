@@ -25,7 +25,7 @@ function NotFoundComponent() {
         </p>
         <div className="mt-6">
           <Link
-            to="/"
+            to="/dashboard"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Retour au tableau de bord
@@ -67,14 +67,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "AnkibaPay — Paie · RH · Pointage" },
+      { title: "Mshahara — Paie · RH · Pointage" },
       {
         name: "description",
         content:
           "Plateforme RH et paie pour les entreprises comoriennes. Pointage, contrats, congés et bulletins en KMF.",
       },
-      { name: "author", content: "AnkibaPay" },
-      { property: "og:title", content: "AnkibaPay — Paie · RH · Pointage" },
+      { name: "author", content: "Mshahara" },
+      { property: "og:title", content: "Mshahara — Paie · RH · Pointage" },
       {
         property: "og:description",
         content:
@@ -85,7 +85,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/brand/ankibapay-logo.png", type: "image/png" },
+      { rel: "icon", href: "/brand/mshahara-icon.svg", type: "image/svg+xml" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

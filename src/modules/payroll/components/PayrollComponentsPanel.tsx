@@ -122,7 +122,7 @@ export function PayrollComponentsPanel({ companyId, components, onChanged }: Pro
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">
-        Tous les taux sont paramétrables par entreprise. Aucun taux légal n’est figé dans AnkibaPay —
+        Tous les taux sont paramétrables par entreprise. Aucun taux légal n’est figé dans Mshahara —
         configurez cotisations et impôts selon votre conseil.
       </p>
 

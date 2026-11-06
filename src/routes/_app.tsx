@@ -5,7 +5,7 @@ import {
   isPlatformAdmin,
   requireAuthSession,
 } from "@/lib/auth/auth.functions";
-import { PLATFORM_ADMIN_ROUTES } from "@/lib/auth/roles";
+import { getUserRole, NAV_BY_ROLE, PLATFORM_ADMIN_ROUTES } from "@/lib/auth/roles";
 import type { AuthUser } from "@/lib/auth/types";
 
 export type AppRouteContext = {
@@ -77,6 +77,13 @@ export const Route = createFileRoute("/_app")({
         }
         throw redirect({ to: "/company-access" });
       }
+    }
+
+    // Pages outside the role's menu (typed URL): back to the dashboard.
+    // The menu only hides links; this is the actual gate.
+    const path = location.pathname;
+    if (!pathAllowed(path, NAV_BY_ROLE[getUserRole(auth)]) && !pathAllowed(path, ACCESS_ALLOWED)) {
+      throw redirect({ to: "/dashboard" });
     }
 
     return { auth };

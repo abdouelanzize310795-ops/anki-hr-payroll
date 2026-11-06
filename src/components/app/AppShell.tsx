@@ -1,5 +1,5 @@
 import { Link, getRouteApi, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard, Building2, Users, UserPlus, FileSignature, Clock,
@@ -23,7 +23,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { AnkibaPayLogo } from "@/components/brand/AnkibaPayLogo";
+import { MshaharaLogo } from "@/components/brand/MshaharaLogo";
 import { brand } from "@/lib/brand";
 import { isPlatformAdmin, signOut, subscriptionDaysRemaining } from "@/lib/auth/auth.functions";
 import { getUserRole, NAV_BY_ROLE } from "@/lib/auth/roles";
@@ -59,7 +59,7 @@ const roleLabels: Record<string, string> = {
 type NavItem = { title: string; url: string; icon: LucideIcon };
 
 const primary: NavItem[] = [
-  { title: "Tableau de bord", url: "/", icon: LayoutDashboard },
+  { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
   { title: "Entreprises", url: "/companies", icon: Building2 },
   { title: "Employés", url: "/employees", icon: Users },
   { title: "Recrutement", url: "/recruitment", icon: UserPlus },
@@ -97,7 +97,7 @@ const system: NavItem[] = [
 
 /** Console SaaS — distinct from tenant RH workspace */
 const consoleOverview: NavItem[] = [
-  { title: "Vue plateforme", url: "/", icon: LayoutDashboard },
+  { title: "Vue plateforme", url: "/dashboard", icon: LayoutDashboard },
   { title: "Console admin", url: "/admin", icon: ShieldCheck },
 ];
 
@@ -132,7 +132,7 @@ function NavSection({ label, items, currentPath }: { label: string; items: NavIt
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => {
-            const active = item.url === "/" ? currentPath === "/" : currentPath.startsWith(item.url);
+            const active = item.url === "/dashboard" ? currentPath === "/dashboard" : currentPath.startsWith(item.url);
             return (
               <SidebarMenuItem key={item.url}>
                 <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
@@ -156,10 +156,10 @@ function BrandMark({ consoleMode }: { consoleMode?: boolean }) {
   return (
     <div className="flex items-center gap-2.5 px-2 py-1.5">
       {collapsed ? (
-        <AnkibaPayLogo variant="icon" className="h-9 w-9" />
+        <MshaharaLogo variant="icon" className="h-9 w-9" />
       ) : (
         <div className="min-w-0">
-          <AnkibaPayLogo variant="full-dark" className="h-11 w-auto max-w-[190px]" />
+          <MshaharaLogo variant="full-dark" className="h-11 w-auto max-w-[190px]" />
           <div className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.2em] text-gold">
             {consoleMode ? "Console plateforme" : brand.tagline}
           </div>
@@ -235,7 +235,7 @@ function AppSidebar({ currentPath }: { currentPath: string }) {
         {admin ? (
           <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/50 p-3 text-xs text-sidebar-foreground/80 group-data-[collapsible=icon]:hidden">
             <div className="mb-1 flex items-center gap-1.5 font-medium text-sidebar-foreground">
-              <ShieldCheck className="h-3.5 w-3.5 text-gold" /> Ops AnkibaPay
+              <ShieldCheck className="h-3.5 w-3.5 text-gold" /> Ops Mshahara
             </div>
             <div className="text-sidebar-foreground/60">
               Validation tenants · supervision plateforme
@@ -268,10 +268,10 @@ function AppSidebar({ currentPath }: { currentPath: string }) {
 }
 
 function useBreadcrumbs(pathname: string) {
-  if (pathname === "/") return [{ label: "Tableau de bord", href: "/" }];
-  const item = allNav.find((i) => i.url !== "/" && pathname.startsWith(i.url));
+  if (pathname === "/dashboard") return [{ label: "Tableau de bord", href: "/dashboard" }];
+  const item = allNav.find((i) => i.url !== "/dashboard" && pathname.startsWith(i.url));
   return [
-    { label: "Tableau de bord", href: "/" },
+    { label: "Tableau de bord", href: "/dashboard" },
     { label: item?.title ?? "Page", href: item?.url ?? pathname },
   ];
 }
@@ -293,7 +293,12 @@ function TopBar({ onOpenCommand }: { onOpenCommand: () => void }) {
     setIsDark(dark);
   }, []);
 
+  // Unread badge: refreshed on navigation, but at most once a minute per company.
+  const lastBadgeLoad = useRef<{ companyId: string | null | undefined; at: number } | null>(null);
   useEffect(() => {
+    const last = lastBadgeLoad.current;
+    if (last && last.companyId === companyId && Date.now() - last.at < 60_000) return;
+    lastBadgeLoad.current = { companyId, at: Date.now() };
     void (async () => {
       try {
         let read = new Set<string>();
@@ -436,7 +441,7 @@ function GlobalCommand({ open, setOpen }: { open: boolean; setOpen: (v: boolean)
 
   const go = (url: string) => {
     setOpen(false);
-    void navigate({ to: url as "/" });
+    void navigate({ to: url as "/dashboard" });
   };
 
   return (

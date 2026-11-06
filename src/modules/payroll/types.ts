@@ -26,6 +26,44 @@ export type PayrollComponent = {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  /** Rules configured by the employer. */
+  min_amount?: number | null;
+  max_amount?: number | null;
+  percent_basis?: PercentBasis;
+  reduces_taxable_base?: boolean;
+  show_on_payslip?: boolean;
+  show_base_rate?: boolean;
+  description?: string | null;
+  cond_department_ids?: string[] | null;
+  cond_contract_types?: string[] | null;
+  cond_min_seniority_months?: number | null;
+  cond_employee_ids?: string[] | null;
+};
+
+export type PercentBasis = "auto" | "base" | "gross" | "taxable" | "retirement";
+
+export const percentBasisLabel: Record<PercentBasis, string> = {
+  auto: "Automatique",
+  base: "Salaire de base",
+  gross: "Salaire brut",
+  taxable: "Base imposable (IGR)",
+  retirement: "Base retraite",
+};
+
+export type PayrollComponentPreset = {
+  code: string;
+  name: string;
+  description: string;
+  category: string;
+  kind: PayrollComponentKind;
+  calc_method: PayrollCalcMethod;
+  rate_value: number;
+  percent_basis: PercentBasis;
+  subject_to_igr: boolean;
+  subject_to_retirement: boolean;
+  reduces_taxable_base: boolean;
+  cond_min_seniority_months: number | null;
+  sort_order: number;
 };
 
 export type PayrollRun = {
@@ -43,6 +81,7 @@ export type PayrollRun = {
   total_deductions: number;
   total_net: number;
   total_employer_cost: number;
+  use_attendance: boolean;
   notes: string | null;
   calculated_at: string | null;
   approved_at: string | null;
@@ -97,6 +136,8 @@ export type PayslipLine = {
   amount: number;
   sort_order: number;
   created_at: string;
+  is_hidden?: boolean;
+  show_base_rate?: boolean;
 };
 
 export type PayslipDetail = Payslip & {

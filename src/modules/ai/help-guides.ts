@@ -1,5 +1,5 @@
 /**
- * Guided how-to answers for AnkibaPay (French).
+ * Guided how-to answers for Mshahara (French).
  * Matched before live-data intents when the user asks "comment…".
  */
 
@@ -217,7 +217,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       /changer.*password/,
     ],
     answer:
-      "À la **première connexion** avec un mot de passe temporaire, AnkibaPay impose le **changement de mot de passe**.\n" +
+      "À la **première connexion** avec un mot de passe temporaire, Mshahara impose le **changement de mot de passe**.\n" +
       "Ensuite : **Paramètres** pour mettre à jour votre profil. En cas d’oubli, contactez la RH / l’employeur.",
     hints: [
       "Comment pointer ?",
@@ -245,7 +245,7 @@ export const HELP_GUIDES: HelpGuide[] = [
       /que.*puis.?je.*(demander|faire|poser)/,
       /aide/,
       /help/,
-      /comment.*utiliser.*(assistant|ia|ankiba)/,
+      /comment.*utiliser.*(assistant|ia|mshahara)/,
       /que.*sais.?tu.*faire/,
       /quelles.*questions/,
     ],

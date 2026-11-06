@@ -209,7 +209,7 @@ export const DOCUMENT_TEMPLATES: DocumentTemplateDef[] = [
       {
         heading: "Mentions",
         paragraphs: [
-          "Document généré via AnkibaPay. Les taux et rubriques sont ceux configurés par l’entreprise.",
+          "Document généré via Mshahara. Les taux et rubriques sont ceux configurés par l’entreprise.",
         ],
       },
     ],
@@ -390,7 +390,7 @@ export const DOCUMENT_TEMPLATES: DocumentTemplateDef[] = [
     sections: [
       {
         paragraphs: [
-          "Chez {{company}}, les congés sont demandés via AnkibaPay et validés par le manager / RH.",
+          "Chez {{company}}, les congés sont demandés via Mshahara et validés par le manager / RH.",
           "Le solde est calculé selon les types de congés configurés par l’entreprise.",
           "Les demandes doivent être déposées autant que possible 7 jours à l’avance, sauf urgence.",
           "Édité le {{today}}.",
@@ -512,7 +512,7 @@ export const DOCUMENT_TEMPLATES: DocumentTemplateDef[] = [
     category: "other",
     title: "Formulaire de demande de congé",
     shortLabel: "Dem. congé",
-    description: "Version papier complémentaire à AnkibaPay.",
+    description: "Version papier complémentaire à Mshahara.",
     fields: ["company", "employee", "dates"],
     sections: [
       {

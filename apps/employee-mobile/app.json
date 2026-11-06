@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "Mshahara",
+    "slug": "anki-employee-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "anki-employee",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "online.mshahara.employee",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "La position peut être enregistrée lors du pointage."
+      }
+    },
+    "android": {
+      "package": "online.mshahara.employee",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0E4C56"
+      },
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION", "CAMERA"]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Autoriser Mshahara à utiliser votre position pour le pointage."
+        }
+      ]
+    ],
+    "experiments": {
+      "tsconfigPaths": true
+    }
+  }
+}

@@ -7,6 +7,18 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
+  vite: {
+    server: {
+      // The whole project is mounted in Docker: skip folders the web app never imports.
+      watch: { ignored: ["**/apps/**", "**/.output/**", "**/.wrangler/**", "**/screenshots/**"] },
+      // Public demo tunnels (npx localtunnel --port 8090).
+      allowedHosts: [".loca.lt"],
+      // Never serve local secrets/test credentials from the dev server.
+      fs: { deny: [".env", ".env.*", "*.local", "*.{crt,pem,key}", "db/**", "docker-compose.yml"] },
+    },
+  },
+  // Self-hosted Node server (Docker / VPS) instead of the Cloudflare default.
+  nitro: { preset: "node-server" },
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this

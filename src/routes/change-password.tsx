@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AnkibaPayLogo } from "@/components/brand/AnkibaPayLogo";
+import { MshaharaLogo } from "@/components/brand/MshaharaLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +34,7 @@ export const Route = createFileRoute("/change-password")({
   beforeLoad: async () => {
     const auth = await requireAuthSession();
     if (!auth.profile?.must_change_password) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
     return { auth };
   },
@@ -56,7 +56,7 @@ function ChangePasswordPage() {
       setServerError(result.message);
       return;
     }
-    await navigate({ to: "/" });
+    await navigate({ to: "/dashboard" });
   });
 
   return (
@@ -70,7 +70,7 @@ function ChangePasswordPage() {
       />
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
-          <AnkibaPayLogo variant="full" className="h-14 w-auto" />
+          <MshaharaLogo variant="full" className="h-14 w-auto" />
           <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-reef">
             {brand.tagline}
           </p>

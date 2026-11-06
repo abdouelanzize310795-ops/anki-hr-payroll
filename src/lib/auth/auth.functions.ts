@@ -272,6 +272,13 @@ export const changePasswordFirstLogin = createServerFn({ method: "POST" })
       return { ok: false, message: "Authentification requise" };
     }
 
+    // Only for accounts whose password was set by HR and must be replaced:
+    // otherwise a stolen session could change the password without the old one.
+    const profile = await loadProfile(authData.user.id);
+    if (!profile?.must_change_password) {
+      return { ok: false, message: "Le changement de mot de passe n’est pas demandé pour ce compte" };
+    }
+
     const { error: pwdError } = await supabase.auth.updateUser({
       password: data.newPassword,
     });

@@ -1,0 +1,11 @@
+node_modules
+apps
+.output
+.wrangler
+.tanstack
+.git
+.env*
+screenshots
+*.local
+*.apk
+db/backups

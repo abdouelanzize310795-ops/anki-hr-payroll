@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { provisionStaffAccountSchema } from "./schemas";
+import { afterAccountProvisioned } from "@/lib/db/accounts";
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; message: string };
 
@@ -20,6 +21,8 @@ export type StaffProvisionResult = {
   role: string;
   created: boolean;
   temporary_password: string | null;
+  /** Sign-in details e-mailed to the new staff member. */
+  mailed?: boolean;
 };
 
 async function requireUserId(): Promise<string> {
@@ -69,6 +72,9 @@ export const provisionStaffAccount = createServerFn({ method: "POST" })
     if (!row?.ok || !row.user_id || !row.email) {
       return { ok: false, message: "Création du compte impossible" };
     }
+    const mailed = row.temporary_password
+      ? (await afterAccountProvisioned({ userId: row.user_id, email: row.email, temporaryPassword: row.temporary_password })).mailed
+      : false;
     return {
       ok: true,
       data: {
@@ -77,6 +83,7 @@ export const provisionStaffAccount = createServerFn({ method: "POST" })
         role: String(row.role ?? data.role),
         created: Boolean(row.created),
         temporary_password: row.temporary_password ?? null,
+        mailed,
       },
     };
   });
@@ -99,6 +106,6 @@ export const HR_ACCESS = {
   cannot: [
     "Créer un autre compte RH (réservé à l’employeur)",
     "Promouvoir quelqu’un en employeur",
-    "Accéder à la console plateforme AnkibaPay",
+    "Accéder à la console plateforme Mshahara",
   ],
 } as const;

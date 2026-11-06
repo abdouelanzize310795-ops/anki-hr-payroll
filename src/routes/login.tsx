@@ -3,11 +3,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AnkibaPayLogo } from "@/components/brand/AnkibaPayLogo";
+import { MshaharaLogo } from "@/components/brand/MshaharaLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getAuthSession, signInWithPassword } from "@/lib/auth/auth.functions";
+import { sendEmailConfirmation } from "@/lib/auth/email-links.functions";
 import { brand } from "@/lib/brand";
 
 const schema = z.object({
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/login")({
       if (session.profile?.must_change_password) {
         throw redirect({ to: "/change-password" });
       }
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
   },
   component: LoginPage,
@@ -50,7 +51,7 @@ function LoginPage() {
       await navigate({ to: "/change-password" });
       return;
     }
-    await navigate({ to: "/" });
+    await navigate({ to: "/dashboard" });
   });
 
   return (
@@ -64,7 +65,7 @@ function LoginPage() {
       />
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
-          <AnkibaPayLogo variant="full" className="h-14 w-auto" />
+          <MshaharaLogo variant="full" className="h-14 w-auto" />
           <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-reef">
             {brand.tagline}
           </p>
@@ -92,7 +93,12 @@ function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Mot de passe</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Mot de passe</Label>
+                <Link to="/forgot-password" className="text-xs font-medium text-reef hover:underline">
+                  Mot de passe oublié ?
+                </Link>
+              </div>
               <Input
                 id="password"
                 type="password"
@@ -107,6 +113,18 @@ function LoginPage() {
             {serverError && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {serverError}
+                {serverError.includes("non confirmée") && (
+                  <button
+                    type="button"
+                    className="mt-1 block font-medium underline"
+                    onClick={async () => {
+                      const r = await sendEmailConfirmation({ data: { email: form.getValues("email") } });
+                      setServerError(r.message);
+                    }}
+                  >
+                    Renvoyer le lien de confirmation
+                  </button>
+                )}
               </div>
             )}
 

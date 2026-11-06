@@ -94,7 +94,7 @@ function AccountingPage() {
       <PageHeader
         badge="Finance"
         title="Comptabilité"
-        description="Charges de personnel et virements issus de la paie AnkibaPay."
+        description="Charges de personnel et virements issus de la paie Mshahara."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button

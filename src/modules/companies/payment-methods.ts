@@ -19,7 +19,7 @@ export type PaymentMethodInfo = {
   logoAlt?: string;
 };
 
-/** AnkibaPay M'Vola Comores */
+/** Mshahara M'Vola Comores */
 export const MVOLA_PAYMENT: PaymentMethodInfo = {
   id: "mvola",
   methodLabel: "M'Vola Comores",
@@ -32,7 +32,7 @@ export const MVOLA_PAYMENT: PaymentMethodInfo = {
   logoAlt: "M'Vola Comores",
 };
 
-/** AnkibaPay Poketra EXIM BANK */
+/** Mshahara Poketra EXIM BANK */
 export const POKETRA_PAYMENT: PaymentMethodInfo = {
   id: "poketra",
   methodLabel: "Poketra EXIM BANK",

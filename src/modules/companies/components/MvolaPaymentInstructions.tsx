@@ -55,7 +55,7 @@ export function SubscriptionPaymentInstructions({
               Paiement via {pay.methodLabel}
             </h3>
             <p className="mt-1 text-muted-foreground">
-              Effectuez un transfert vers le compte AnkibaPay, puis placez le code unique dans
+              Effectuez un transfert vers le compte Mshahara, puis placez le code unique dans
               la <strong>description du transfert</strong>.
               {planLabel ? (
                 <>
@@ -105,7 +105,7 @@ export function SubscriptionPaymentInstructions({
           <strong className="font-mono text-foreground">{paymentReference}</strong>.
         </li>
         <li>
-          Un administrateur AnkibaPay active votre entreprise sous{" "}
+          Un administrateur Mshahara active votre entreprise sous{" "}
           <strong className="text-foreground">
             {SUBSCRIPTION_SUPPORT.activationSlaHours}&nbsp;h
           </strong>{" "}

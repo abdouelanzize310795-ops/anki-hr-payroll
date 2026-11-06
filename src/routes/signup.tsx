@@ -3,11 +3,12 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AnkibaPayLogo } from "@/components/brand/AnkibaPayLogo";
+import { MshaharaLogo } from "@/components/brand/MshaharaLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { getAuthSession, signInWithPassword, signUpWithPassword } from "@/lib/auth/auth.functions";
+import { sendEmailConfirmation } from "@/lib/auth/email-links.functions";
 import { brand } from "@/lib/brand";
 
 const schema = z.object({
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/signup")({
   beforeLoad: async () => {
     const session = await getAuthSession();
     if (session) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
   },
   component: SignupPage,
@@ -47,7 +48,10 @@ function SignupPage() {
     }
 
     if (result.needsEmailConfirmation) {
-      setInfo("Compte créé. Vérifiez votre e-mail pour confirmer l’adresse, puis connectez-vous.");
+      await sendEmailConfirmation({ data: { email: values.email } });
+      setInfo(
+        "Compte créé. Un e-mail de confirmation vient de vous être envoyé : cliquez sur le lien qu’il contient, puis connectez-vous.",
+      );
       return;
     }
 
@@ -73,7 +77,7 @@ function SignupPage() {
       />
       <div className="relative w-full max-w-md">
         <div className="mb-8 flex flex-col items-center text-center">
-          <AnkibaPayLogo variant="full" className="h-14 w-auto" />
+          <MshaharaLogo variant="full" className="h-14 w-auto" />
           <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-reef">
             {brand.tagline}
           </p>
@@ -82,7 +86,7 @@ function SignupPage() {
         <div className="card-elevated rounded-2xl p-8">
           <h1 className="font-display text-2xl font-bold text-primary">Créer un compte</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Démarrez AnkibaPay pour votre entreprise.
+            Démarrez Mshahara pour votre entreprise.
           </p>
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4">

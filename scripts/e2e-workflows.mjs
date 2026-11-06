@@ -1,5 +1,5 @@
 /**
- * E2E workflows AnkibaPay — active et teste tous les parcours métier
+ * E2E workflows Mshahara — active et teste tous les parcours métier
  * Usage: node scripts/e2e-workflows.mjs
  */
 import { createClient } from "@supabase/supabase-js";
