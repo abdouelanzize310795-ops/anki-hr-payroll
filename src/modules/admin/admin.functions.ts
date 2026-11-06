@@ -22,6 +22,8 @@ export type AdminOverview = {
     subscription_paid_at: string | null;
     payment_reference: string | null;
     payment_method: string | null;
+    payment_seats: number | null;
+    payment_amount: number | null;
     is_active: boolean;
   }>;
   users: Array<{
@@ -62,7 +64,7 @@ export const getAdminOverview = createServerFn({ method: "GET" }).handler(
       supabase
         .from("companies")
         .select(
-          "id, legal_name, city, created_at, approval_status, subscription_status, subscription_plan, subscription_paid_at, payment_reference, payment_method, is_active",
+          "id, legal_name, city, created_at, approval_status, subscription_status, subscription_plan, subscription_paid_at, payment_reference, payment_method, payment_seats, payment_amount, is_active",
         )
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
@@ -151,6 +153,8 @@ export const getAdminOverview = createServerFn({ method: "GET" }).handler(
       subscription_paid_at: c.subscription_paid_at,
       payment_reference: c.payment_reference,
       payment_method: c.payment_method,
+      payment_seats: c.payment_seats,
+      payment_amount: c.payment_amount,
       is_active: c.is_active,
     }));
 

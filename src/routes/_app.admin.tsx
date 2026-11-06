@@ -171,6 +171,18 @@ function AdminPage() {
                               {c.payment_method}
                             </span>
                           ) : null}
+                          {c.payment_amount != null ? (
+                            <div className="mt-1 font-medium">
+                              À vérifier : {new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Number(c.payment_amount))} KMF
+                              <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                ({c.payment_seats} employé(s) facturé(s), {c.employee_count} aujourd’hui)
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="mt-1 text-xs text-muted-foreground">
+                              Montant non calculé (ancien code ou devis)
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="mt-2 text-xs text-amber-700 dark:text-amber-400">

@@ -135,6 +135,8 @@ function CompanyAccessPage() {
                 paymentReference={company.payment_reference}
                 paymentMethod={company.payment_method}
                 planLabel={company.subscription_plan}
+                seats={company.payment_seats}
+                amount={company.payment_amount}
               />
             ) : null}
             <div className="rounded-2xl border border-border bg-card p-6">

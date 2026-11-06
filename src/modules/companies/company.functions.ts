@@ -243,6 +243,7 @@ export const markSubscriptionPaid = createServerFn({ method: "POST" })
       companyId: z.string().uuid(),
       plan: z.enum(["starter", "pro", "enterprise"]).default("pro"),
       paymentMethod: z.enum(["mvola", "poketra"]).default("mvola"),
+      seats: z.coerce.number().int().min(1).max(1000000).optional(),
     }),
   )
   .handler(async ({ data }): Promise<ActionResult<Company>> => {
@@ -252,6 +253,7 @@ export const markSubscriptionPaid = createServerFn({ method: "POST" })
       p_company_id: data.companyId,
       p_plan: data.plan,
       p_payment_method: data.paymentMethod,
+      p_declared_seats: data.seats ?? null,
     });
     if (error) return { ok: false, message: error.message };
     return { ok: true, data: company as Company };

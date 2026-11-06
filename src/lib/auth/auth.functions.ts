@@ -38,7 +38,7 @@ async function loadCompanyAccess(companyId: string): Promise<CompanyAccess | nul
   const { data, error } = await supabase
     .from("companies")
     .select(
-      "id, legal_name, is_active, approval_status, subscription_status, subscription_plan, subscription_paid_at, subscription_starts_at, subscription_ends_at, payment_reference, payment_method, rejection_reason",
+      "id, legal_name, is_active, approval_status, subscription_status, subscription_plan, subscription_paid_at, subscription_starts_at, subscription_ends_at, payment_reference, payment_method, payment_seats, payment_amount, rejection_reason",
     )
     .eq("id", companyId)
     .is("deleted_at", null)

@@ -11,6 +11,8 @@ type Props = {
   paymentReference: string;
   paymentMethod?: string | null;
   planLabel?: string | null;
+  seats?: number | null;
+  amount?: number | null;
   compact?: boolean;
 };
 
@@ -18,6 +20,8 @@ export function SubscriptionPaymentInstructions({
   paymentReference,
   paymentMethod = "mvola",
   planLabel,
+  seats,
+  amount,
   compact = false,
 }: Props) {
   const [copied, setCopied] = useState(false);
@@ -68,6 +72,26 @@ export function SubscriptionPaymentInstructions({
         </div>
       )}
 
+      {amount != null ? (
+        <div className="rounded-xl border border-primary/40 bg-card p-4">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">
+            Montant exact à payer (1 mois)
+          </div>
+          <div className="mt-1 font-mono text-2xl font-bold text-primary">
+            {new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Number(amount))} KMF
+          </div>
+          {seats != null ? (
+            <div className="mt-1 text-xs text-muted-foreground">
+              {seats} employé(s) × {new Intl.NumberFormat("fr-FR").format(Number(amount) / seats)} KMF
+            </div>
+          ) : null}
+        </div>
+      ) : planLabel === "enterprise" ? (
+        <div className="rounded-xl border border-border bg-card p-4 text-sm">
+          Plan Entreprise : le montant est fixé sur devis. Contactez-nous avant de payer.
+        </div>
+      ) : null}
+
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="text-xs uppercase tracking-wider text-muted-foreground">
           Code unique à coller dans la description
@@ -96,6 +120,12 @@ export function SubscriptionPaymentInstructions({
 
       <ol className="list-decimal space-y-1.5 pl-5 text-muted-foreground">
         <li>{pay.openAppHint}</li>
+        {amount != null ? (
+          <li>
+            Montant :{" "}
+            <strong className="text-foreground">{new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Number(amount))} KMF</strong>.
+          </li>
+        ) : null}
         <li>
           Destinataire : <strong className="text-foreground">{pay.accountName}</strong> —{" "}
           <strong className="text-foreground">{pay.accountNumber}</strong>.

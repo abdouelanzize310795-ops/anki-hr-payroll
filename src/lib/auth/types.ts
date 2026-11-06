@@ -33,6 +33,8 @@ export type CompanyAccess = {
   subscription_ends_at: string | null;
   payment_reference: string | null;
   payment_method: string | null;
+  payment_seats: number | null;
+  payment_amount: number | null;
   rejection_reason: string | null;
 };
 
