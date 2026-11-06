@@ -51,6 +51,7 @@ import { Route as AppPayrollRunIdRouteImport } from './routes/_app.payroll.$runI
 import { Route as AppEmployeesEmployeeIdRouteImport } from './routes/_app.employees.$employeeId'
 import { Route as AppContractsContractIdRouteImport } from './routes/_app.contracts.$contractId'
 import { Route as AppCompaniesCompanyIdRouteImport } from './routes/_app.companies.$companyId'
+import { Route as AppSubscriptionsReceiptPaymentIdRouteImport } from './routes/_app.subscriptions_.receipt.$paymentId'
 import { Route as AppPayrollPayslipPayslipIdRouteImport } from './routes/_app.payroll.payslip.$payslipId'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
@@ -262,6 +263,12 @@ const AppCompaniesCompanyIdRoute = AppCompaniesCompanyIdRouteImport.update({
   path: '/$companyId',
   getParentRoute: () => AppCompaniesRoute,
 } as any)
+const AppSubscriptionsReceiptPaymentIdRoute =
+  AppSubscriptionsReceiptPaymentIdRouteImport.update({
+    id: '/subscriptions_/receipt/$paymentId',
+    path: '/subscriptions/receipt/$paymentId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPayrollPayslipPayslipIdRoute =
   AppPayrollPayslipPayslipIdRouteImport.update({
     id: '/payslip/$payslipId',
@@ -312,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/transfers/$batchId': typeof AppTransfersBatchIdRoute
   '/print/payslip/$payslipId': typeof PrintPayslipPayslipIdRoute
   '/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
+  '/subscriptions/receipt/$paymentId': typeof AppSubscriptionsReceiptPaymentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -356,6 +364,7 @@ export interface FileRoutesByTo {
   '/transfers/$batchId': typeof AppTransfersBatchIdRoute
   '/print/payslip/$payslipId': typeof PrintPayslipPayslipIdRoute
   '/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
+  '/subscriptions/receipt/$paymentId': typeof AppSubscriptionsReceiptPaymentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -402,6 +411,7 @@ export interface FileRoutesById {
   '/_app/transfers/$batchId': typeof AppTransfersBatchIdRoute
   '/print/payslip/$payslipId': typeof PrintPayslipPayslipIdRoute
   '/_app/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
+  '/_app/subscriptions_/receipt/$paymentId': typeof AppSubscriptionsReceiptPaymentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -448,6 +458,7 @@ export interface FileRouteTypes {
     | '/transfers/$batchId'
     | '/print/payslip/$payslipId'
     | '/payroll/payslip/$payslipId'
+    | '/subscriptions/receipt/$paymentId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -492,6 +503,7 @@ export interface FileRouteTypes {
     | '/transfers/$batchId'
     | '/print/payslip/$payslipId'
     | '/payroll/payslip/$payslipId'
+    | '/subscriptions/receipt/$paymentId'
   id:
     | '__root__'
     | '/'
@@ -537,6 +549,7 @@ export interface FileRouteTypes {
     | '/_app/transfers/$batchId'
     | '/print/payslip/$payslipId'
     | '/_app/payroll/payslip/$payslipId'
+    | '/_app/subscriptions_/receipt/$paymentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -851,6 +864,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCompaniesCompanyIdRouteImport
       parentRoute: typeof AppCompaniesRoute
     }
+    '/_app/subscriptions_/receipt/$paymentId': {
+      id: '/_app/subscriptions_/receipt/$paymentId'
+      path: '/subscriptions/receipt/$paymentId'
+      fullPath: '/subscriptions/receipt/$paymentId'
+      preLoaderRoute: typeof AppSubscriptionsReceiptPaymentIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/payroll/payslip/$payslipId': {
       id: '/_app/payroll/payslip/$payslipId'
       path: '/payslip/$payslipId'
@@ -949,6 +969,7 @@ interface AppRouteChildren {
   AppTasksRoute: typeof AppTasksRoute
   AppTrainingRoute: typeof AppTrainingRoute
   AppTransfersRoute: typeof AppTransfersRouteWithChildren
+  AppSubscriptionsReceiptPaymentIdRoute: typeof AppSubscriptionsReceiptPaymentIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -975,6 +996,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTasksRoute: AppTasksRoute,
   AppTrainingRoute: AppTrainingRoute,
   AppTransfersRoute: AppTransfersRouteWithChildren,
+  AppSubscriptionsReceiptPaymentIdRoute: AppSubscriptionsReceiptPaymentIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

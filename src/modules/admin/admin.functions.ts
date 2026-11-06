@@ -187,6 +187,7 @@ export const adminReviewCompany = createServerFn({ method: "POST" })
       companyId: z.string().uuid(),
       action: z.enum(["approve", "reject"]),
       note: z.string().trim().max(500).optional().nullable(),
+      receivedAmount: z.coerce.number().min(0).optional().nullable(),
     }),
   )
   .handler(async ({ data }): Promise<{ ok: true; data: Company } | { ok: false; message: string }> => {
@@ -200,6 +201,7 @@ export const adminReviewCompany = createServerFn({ method: "POST" })
       p_company_id: data.companyId,
       p_action: data.action,
       p_note: data.note?.trim() || null,
+      p_received_amount: data.receivedAmount ?? null,
     });
 
     if (error) return { ok: false, message: error.message };

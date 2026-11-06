@@ -18,6 +18,7 @@ import {
   type CompanyApprovalStatus,
   type CompanySubscriptionStatus,
 } from "@/modules/companies/types";
+import { AdminPaymentsPanel } from "@/modules/companies/components/PaymentHistory";
 import { BackupPanel } from "@/modules/admin/components/BackupPanel";
 import { CompanyApprovalActions } from "@/modules/admin/components/CompanyApprovalActions";
 
@@ -299,6 +300,7 @@ function AdminPage() {
       </div>
 
       <div className="mt-6">
+        <AdminPaymentsPanel />
         <BackupPanel />
       </div>
 

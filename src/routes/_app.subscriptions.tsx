@@ -12,6 +12,7 @@ import {
   companyApprovalLabel,
   companySubscriptionLabel,
 } from "@/modules/companies/types";
+import { PaymentHistory } from "@/modules/companies/components/PaymentHistory";
 import { SubscriptionPaymentInstructions } from "@/modules/companies/components/MvolaPaymentInstructions";
 import {
   PAYMENT_METHODS,
@@ -440,6 +441,7 @@ function SubscriptionsPage() {
           )}
         </SectionCard>
       </div>
+      {companyId && !admin ? <PaymentHistory companyId={companyId} /> : null}
     </>
   );
 }
