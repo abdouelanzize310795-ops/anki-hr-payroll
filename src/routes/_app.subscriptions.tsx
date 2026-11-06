@@ -12,6 +12,8 @@ import {
   companyApprovalLabel,
   companySubscriptionLabel,
 } from "@/modules/companies/types";
+import { listSubscriptionPlans } from "@/modules/companies/payment.functions";
+import { type PlanPricing, withPlanPricing } from "@/modules/companies/plans";
 import { PaymentHistory } from "@/modules/companies/components/PaymentHistory";
 import { SubscriptionPaymentInstructions } from "@/modules/companies/components/MvolaPaymentInstructions";
 import {
@@ -27,7 +29,7 @@ export const Route = createFileRoute("/_app/subscriptions")({
 
 const appRouteApi = getRouteApi("/_app");
 
-const plans = [
+const basePlans = [
   {
     id: "starter" as const,
     name: "Starter",
@@ -87,6 +89,12 @@ function SubscriptionsPage() {
       ? "poketra"
       : "mvola",
   );
+  const [pricing, setPricing] = useState<PlanPricing[]>([]);
+  useEffect(() => {
+    listSubscriptionPlans().then(setPricing).catch(() => setPricing([]));
+  }, []);
+  const plans = withPlanPricing(basePlans, pricing);
+  const proPrice = Number(pricing.find((p) => p.code === "pro")?.price_per_employee ?? 4500);
   const [seatsInput, setSeatsInput] = useState("");
   const [paymentDue, setPaymentDue] = useState({
     seats: auth.company?.payment_seats ?? null,
@@ -125,7 +133,7 @@ function SubscriptionsPage() {
     })();
   }, [admin, companyId]);
 
-  const estimate = headcount != null ? headcount * 4500 : null;
+  const estimate = headcount != null ? headcount * proPrice : null;
   const currentPlan = auth.company?.subscription_plan;
 
   const handleChoosePlan = async (plan: "starter" | "pro" | "enterprise") => {

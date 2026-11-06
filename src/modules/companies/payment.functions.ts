@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireAuthSession, isPlatformAdmin } from "@/lib/auth/auth.functions";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { PlanPricing } from "@/modules/companies/plans";
 
 export type SubscriptionPayment = {
   id: string;
@@ -61,4 +63,32 @@ export const getPaymentReceipt = createServerFn({ method: "POST" })
       .eq("id", payment.company_id)
       .maybeSingle();
     return { payment, company: (company as PaymentReceipt["company"]) ?? null };
+  });
+
+export const listSubscriptionPlans = createServerFn({ method: "GET" }).handler(async (): Promise<PlanPricing[]> => {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.from("subscription_plans").select("*").order("seat_limit", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PlanPricing[];
+});
+
+export const updateSubscriptionPlan = createServerFn({ method: "POST" })
+  .validator(
+    z.object({
+      code: z.string().min(1),
+      price: z.number().min(0).nullable(),
+      seatLimit: z.number().int().min(1),
+    }),
+  )
+  .handler(async ({ data }): Promise<{ ok: true } | { ok: false; message: string }> => {
+    const auth = await requireAuthSession();
+    if (!isPlatformAdmin(auth)) return { ok: false, message: "Accès réservé au super administrateur" };
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase.rpc("admin_update_subscription_plan", {
+      p_code: data.code,
+      p_price: data.price,
+      p_seat_limit: data.seatLimit,
+    });
+    if (error) return { ok: false, message: error.message };
+    return { ok: true };
   });

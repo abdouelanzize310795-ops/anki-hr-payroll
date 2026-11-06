@@ -33,8 +33,14 @@ import { getAuthSession } from "@/lib/auth/auth.functions";
 import { PayslipRenderer } from "@/modules/payroll/components/PayslipRenderer";
 import { SAMPLE_PAYSLIP, type PayslipLayout } from "@/modules/payroll/template.types";
 
+import { listSubscriptionPlans } from "@/modules/companies/payment.functions";
+import { withPlanPricing } from "@/modules/companies/plans";
+
 export const Route = createFileRoute("/")({
-  loader: async () => ({ auth: await getAuthSession() }),
+  loader: async () => {
+    const [auth, pricing] = await Promise.all([getAuthSession(), listSubscriptionPlans().catch(() => [])]);
+    return { auth, pricing };
+  },
   component: LandingPage,
 });
 
@@ -138,7 +144,7 @@ const steps = [
   },
 ];
 
-const plans = [
+const basePlans = [
   {
     name: "Starter",
     price: "2 500",
@@ -533,10 +539,10 @@ function LandingPage() {
             <SectionTitle
               eyebrow="Tarifs"
               title="Un prix juste, par employé"
-              text="Sans frais d’installation. Changez de formule à tout moment."
+              text="Sans frais d’installation. Changez de formule à chaque renouvellement."
             />
             <div className="mt-12 grid gap-6 lg:grid-cols-3">
-              {plans.map((p, i) => (
+              {withPlanPricing(basePlans, Route.useLoaderData().pricing).map((p, i) => (
                 <Reveal
                   key={p.name}
                   delay={i * 120}
