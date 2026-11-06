@@ -227,16 +227,9 @@ function AttendancePage() {
               </Dialog>
             )}
             {isEmployee && (
-              <>
-                <Button size="sm" disabled={busy || !myEmployeeId} onClick={() => void handleClock("in")}>
-                  <LogIn className="mr-1.5 h-4 w-4" />
-                  Entrée
-                </Button>
-                <Button size="sm" variant="outline" disabled={busy || !myEmployeeId} onClick={() => void handleClock("out")}>
-                  <LogOut className="mr-1.5 h-4 w-4" />
-                  Sortie
-                </Button>
-              </>
+              <p className="text-sm text-muted-foreground">
+                Le pointage se fait depuis l’application mobile, sur le lieu de travail.
+              </p>
             )}
           </div>
         }

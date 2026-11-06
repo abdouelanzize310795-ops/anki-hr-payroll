@@ -595,7 +595,7 @@ function SitesTab({ companyId }: { companyId: string }) {
                 <p className="text-xs text-muted-foreground">
                   {s.latitude != null
                     ? `${s.latitude.toFixed(5)}, ${s.longitude?.toFixed(5)} · rayon ${s.radius_m} m · GPS ±${s.max_accuracy_m} m max`
-                    : "Position non définie — pointage sans contrôle de distance"}
+                    : "Position non définie — pointage impossible sur ce site"}
                 </p>
               </div>
               {s.require_qr ? <Badge label="QR obligatoire" cls="bg-primary/10 text-primary" /> : null}
