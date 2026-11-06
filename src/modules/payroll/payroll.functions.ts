@@ -563,6 +563,7 @@ export const createPayrollRun = createServerFn({ method: "POST" })
         period_start: bounds.start,
         period_end: bounds.end,
         currency_code: company?.currency_code ?? "KMF",
+        use_attendance: data.useAttendance,
         notes: data.notes?.trim() || null,
         created_by: userId,
         status: "draft",

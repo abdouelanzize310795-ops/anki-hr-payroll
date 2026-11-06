@@ -81,6 +81,7 @@ export type PayrollRun = {
   total_deductions: number;
   total_net: number;
   total_employer_cost: number;
+  use_attendance: boolean;
   notes: string | null;
   calculated_at: string | null;
   approved_at: string | null;

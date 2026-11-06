@@ -4,6 +4,7 @@ export const createPayrollRunSchema = z.object({
   companyId: z.string().uuid("Entreprise requise"),
   year: z.coerce.number().int().min(2000).max(2100),
   month: z.coerce.number().int().min(1).max(12),
+  useAttendance: z.boolean().default(false),
   notes: z.string().trim().max(2000).optional().or(z.literal("")),
 });
 
