@@ -89,6 +89,25 @@ async function loginLockMessage(keys: string[]): Promise<string | null> {
   return `Trop de tentatives de connexion. Réessayez dans ${minutes} minute${minutes > 1 ? "s" : ""}, ou réinitialisez votre mot de passe.`;
 }
 
+/** Sign-up flood guard: at most SIGNUP_MAX accounts per IP and hour. */
+const SIGNUP_MAX = 5;
+export async function signupBlocked(ip: string | null): Promise<boolean> {
+  const key = `signup|${ip || "?"}`;
+  if (await loginLockMessage([key])) return true;
+  await getPool().query(
+    `insert into public.login_throttle as t (key, failures, first_failure_at)
+     values ($1, 1, now())
+     on conflict (key) do update set
+       failures = case when t.first_failure_at < now() - interval '1 hour' then 1 else t.failures + 1 end,
+       first_failure_at = case when t.first_failure_at < now() - interval '1 hour' then now() else t.first_failure_at end,
+       locked_until = case
+         when t.first_failure_at >= now() - interval '1 hour' and t.failures + 1 > $2 then t.first_failure_at + interval '1 hour'
+         else t.locked_until end`,
+    [key, SIGNUP_MAX],
+  );
+  return Boolean(await loginLockMessage([key]));
+}
+
 /** Lifts every lock of an e-mail (after a password reset). */
 export async function clearLoginLocks(email: string): Promise<void> {
   const e = email.trim().toLowerCase();

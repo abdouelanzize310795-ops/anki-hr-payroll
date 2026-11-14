@@ -178,6 +178,13 @@ export const signUpWithPassword = createServerFn({ method: "POST" })
     const supabase = createSupabaseServerClient();
     const email = data.email.trim().toLowerCase();
 
+    const { getRequestHeader } = await import("@tanstack/react-start/server");
+    const { signupBlocked } = await import("@/lib/db/auth");
+    const ip = getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim() || null;
+    if (await signupBlocked(ip)) {
+      return { ok: false, message: "Trop de comptes créés depuis cette connexion. Réessayez dans une heure." };
+    }
+
     const { data: signUpData, error } = await supabase.auth.signUp({
       email,
       password: data.password,

@@ -41,6 +41,17 @@ export const Route = createFileRoute("/")({
     const [auth, pricing] = await Promise.all([getAuthSession(), listSubscriptionPlans().catch(() => [])]);
     return { auth, pricing };
   },
+  head: () => ({
+    meta: [
+      { title: "Mshahara — Logiciel de paie, RH et pointage aux Comores" },
+      {
+        name: "description",
+        content:
+          "Bulletins de paie en KMF, IGR, congés, contrats et pointage mobile par GPS et QR code. Paiement par M’Vola ou Poketra.",
+      },
+    ],
+    links: [{ rel: "canonical", href: "https://mshahara.online/" }],
+  }),
   component: LandingPage,
 });
 
@@ -634,9 +645,11 @@ function LandingPage() {
           <MshaharaLogo variant="full" className="h-8 w-auto" />
           <p>© {new Date().getFullYear()} Mshahara — Paie, RH et pointage.</p>
           <PlayStoreBadge compact />
-          <div className="flex gap-5">
+          <div className="flex flex-wrap justify-center gap-5">
             <Link to="/login" className="hover:text-primary">Se connecter</Link>
             <Link to="/signup" className="hover:text-primary">Créer un compte</Link>
+            <Link to="/conditions" className="hover:text-primary">Conditions</Link>
+            <Link to="/confidentialite" className="hover:text-primary">Confidentialité</Link>
           </div>
         </div>
       </footer>
@@ -1190,7 +1203,7 @@ function PayslipShuffleGame() {
   );
 }
 
-const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=km.ankibapay.employee";
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=online.mshahara.employee";
 
 /** "Disponible sur Google Play" badge linking to the employee app. */
 function PlayStoreBadge({ compact = false }: { compact?: boolean }) {

@@ -25,10 +25,10 @@ function NotFoundComponent() {
         </p>
         <div className="mt-6">
           <Link
-            to="/dashboard"
+            to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Retour au tableau de bord
+            Retour à l’accueil
           </Link>
         </div>
       </div>
@@ -81,11 +81,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Plateforme RH et paie pour les entreprises comoriennes. Pointage, contrats, congés et bulletins en KMF.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Mshahara" },
+      { property: "og:locale", content: "fr_FR" },
+      { property: "og:url", content: "https://mshahara.online/" },
+      { property: "og:image", content: "https://mshahara.online/og-image.png" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: "https://mshahara.online/og-image.png" },
+      { name: "theme-color", content: "#0E4C56" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/brand/mshahara-icon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/favicon.ico", sizes: "any" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
