@@ -1285,30 +1285,15 @@ function HeroPreview() {
 function PhoneMock() {
   return (
     <div className="mx-auto w-full max-w-xs">
-      <div className="rounded-[2.5rem] border-8 border-primary bg-background p-5 shadow-2xl">
-        <div className="flex items-center gap-2">
-          <Smartphone className="h-4 w-4 text-reef" />
-          <p className="font-mono text-[10px] uppercase tracking-widest text-reef">Espace collaborateur</p>
-        </div>
-        <p className="mt-4 font-display text-xl font-bold text-primary">Bonjour Amina</p>
-        <p className="text-sm text-muted-foreground">Mardi 21 octobre</p>
-        <div className="mt-6 rounded-2xl bg-primary p-5 text-center text-primary-foreground">
-          <p className="text-xs uppercase tracking-wider text-primary-foreground/70">Arrivée</p>
-          <p className="mt-1 font-display text-4xl font-bold">08:02</p>
-          <div className="mt-4 rounded-xl bg-gold py-3 text-sm font-semibold text-gold-foreground">
-            Badger la sortie
-          </div>
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-3 text-center">
-          <div className="rounded-xl bg-card p-3">
-            <p className="font-display text-lg font-bold text-primary">21</p>
-            <p className="text-[11px] text-muted-foreground">jours présents</p>
-          </div>
-          <div className="rounded-xl bg-card p-3">
-            <p className="font-display text-lg font-bold text-primary">18,5</p>
-            <p className="text-[11px] text-muted-foreground">jours de congé</p>
-          </div>
-        </div>
+      <div className="overflow-hidden rounded-[2.5rem] border-8 border-primary bg-background shadow-2xl">
+        <img
+          src="/app-pointage.webp"
+          alt="Écran Pointage de l’application mobile Mshahara : bouton Pointer l’entrée et lien pour scanner le QR code du site"
+          width={540}
+          height={1046}
+          loading="lazy"
+          className="block h-auto w-full"
+        />
       </div>
     </div>
   );
