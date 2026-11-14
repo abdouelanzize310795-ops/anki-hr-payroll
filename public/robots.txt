@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /print/
+Disallow: /display/
+Disallow: /onboarding
+Disallow: /change-password
+Disallow: /reset-password
+Disallow: /verify-email
+
+Sitemap: https://mshahara.online/sitemap.xml

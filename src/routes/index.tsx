@@ -33,8 +33,25 @@ import { getAuthSession } from "@/lib/auth/auth.functions";
 import { PayslipRenderer } from "@/modules/payroll/components/PayslipRenderer";
 import { SAMPLE_PAYSLIP, type PayslipLayout } from "@/modules/payroll/template.types";
 
+import { listSubscriptionPlans } from "@/modules/companies/payment.functions";
+import { withPlanPricing } from "@/modules/companies/plans";
+
 export const Route = createFileRoute("/")({
-  loader: async () => ({ auth: await getAuthSession() }),
+  loader: async () => {
+    const [auth, pricing] = await Promise.all([getAuthSession(), listSubscriptionPlans().catch(() => [])]);
+    return { auth, pricing };
+  },
+  head: () => ({
+    meta: [
+      { title: "Mshahara — Logiciel de paie, RH et pointage aux Comores" },
+      {
+        name: "description",
+        content:
+          "Bulletins de paie en KMF, IGR, congés, contrats et pointage mobile par GPS et QR code. Paiement par M’Vola ou Poketra.",
+      },
+    ],
+    links: [{ rel: "canonical", href: "https://mshahara.online/" }],
+  }),
   component: LandingPage,
 });
 
@@ -138,7 +155,7 @@ const steps = [
   },
 ];
 
-const plans = [
+const basePlans = [
   {
     name: "Starter",
     price: "2 500",
@@ -533,10 +550,10 @@ function LandingPage() {
             <SectionTitle
               eyebrow="Tarifs"
               title="Un prix juste, par employé"
-              text="Sans frais d’installation. Changez de formule à tout moment."
+              text="Sans frais d’installation. Changez de formule à chaque renouvellement."
             />
             <div className="mt-12 grid gap-6 lg:grid-cols-3">
-              {plans.map((p, i) => (
+              {withPlanPricing(basePlans, Route.useLoaderData().pricing).map((p, i) => (
                 <Reveal
                   key={p.name}
                   delay={i * 120}
@@ -628,9 +645,11 @@ function LandingPage() {
           <MshaharaLogo variant="full" className="h-8 w-auto" />
           <p>© {new Date().getFullYear()} Mshahara — Paie, RH et pointage.</p>
           <PlayStoreBadge compact />
-          <div className="flex gap-5">
+          <div className="flex flex-wrap justify-center gap-5">
             <Link to="/login" className="hover:text-primary">Se connecter</Link>
             <Link to="/signup" className="hover:text-primary">Créer un compte</Link>
+            <Link to="/conditions" className="hover:text-primary">Conditions</Link>
+            <Link to="/confidentialite" className="hover:text-primary">Confidentialité</Link>
           </div>
         </div>
       </footer>
@@ -1184,7 +1203,7 @@ function PayslipShuffleGame() {
   );
 }
 
-const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=km.ankibapay.employee";
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=online.mshahara.employee";
 
 /** "Disponible sur Google Play" badge linking to the employee app. */
 function PlayStoreBadge({ compact = false }: { compact?: boolean }) {

@@ -19,6 +19,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export const Route = createFileRoute("/login")({
+  head: () => ({ meta: [{ title: "Se connecter — Mshahara" }, { name: "description", content: "Connectez-vous à votre espace Mshahara : paie, RH et pointage." }] }),
   beforeLoad: async () => {
     const session = await getAuthSession();
     if (session) {

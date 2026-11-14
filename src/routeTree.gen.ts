@@ -17,6 +17,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as ConfidentialiteRouteImport } from './routes/confidentialite'
+import { Route as ConditionsRouteImport } from './routes/conditions'
 import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
@@ -51,6 +52,7 @@ import { Route as AppPayrollRunIdRouteImport } from './routes/_app.payroll.$runI
 import { Route as AppEmployeesEmployeeIdRouteImport } from './routes/_app.employees.$employeeId'
 import { Route as AppContractsContractIdRouteImport } from './routes/_app.contracts.$contractId'
 import { Route as AppCompaniesCompanyIdRouteImport } from './routes/_app.companies.$companyId'
+import { Route as AppSubscriptionsReceiptPaymentIdRouteImport } from './routes/_app.subscriptions_.receipt.$paymentId'
 import { Route as AppPayrollPayslipPayslipIdRouteImport } from './routes/_app.payroll.payslip.$payslipId'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
@@ -91,6 +93,11 @@ const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
 const ConfidentialiteRoute = ConfidentialiteRouteImport.update({
   id: '/confidentialite',
   path: '/confidentialite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConditionsRoute = ConditionsRouteImport.update({
+  id: '/conditions',
+  path: '/conditions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChangePasswordRoute = ChangePasswordRouteImport.update({
@@ -262,6 +269,12 @@ const AppCompaniesCompanyIdRoute = AppCompaniesCompanyIdRouteImport.update({
   path: '/$companyId',
   getParentRoute: () => AppCompaniesRoute,
 } as any)
+const AppSubscriptionsReceiptPaymentIdRoute =
+  AppSubscriptionsReceiptPaymentIdRouteImport.update({
+    id: '/subscriptions_/receipt/$paymentId',
+    path: '/subscriptions/receipt/$paymentId',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppPayrollPayslipPayslipIdRoute =
   AppPayrollPayslipPayslipIdRouteImport.update({
     id: '/payslip/$payslipId',
@@ -272,6 +285,7 @@ const AppPayrollPayslipPayslipIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/change-password': typeof ChangePasswordRoute
+  '/conditions': typeof ConditionsRoute
   '/confidentialite': typeof ConfidentialiteRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -312,10 +326,12 @@ export interface FileRoutesByFullPath {
   '/transfers/$batchId': typeof AppTransfersBatchIdRoute
   '/print/payslip/$payslipId': typeof PrintPayslipPayslipIdRoute
   '/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
+  '/subscriptions/receipt/$paymentId': typeof AppSubscriptionsReceiptPaymentIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/change-password': typeof ChangePasswordRoute
+  '/conditions': typeof ConditionsRoute
   '/confidentialite': typeof ConfidentialiteRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -356,12 +372,14 @@ export interface FileRoutesByTo {
   '/transfers/$batchId': typeof AppTransfersBatchIdRoute
   '/print/payslip/$payslipId': typeof PrintPayslipPayslipIdRoute
   '/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
+  '/subscriptions/receipt/$paymentId': typeof AppSubscriptionsReceiptPaymentIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
   '/change-password': typeof ChangePasswordRoute
+  '/conditions': typeof ConditionsRoute
   '/confidentialite': typeof ConfidentialiteRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
@@ -402,12 +420,14 @@ export interface FileRoutesById {
   '/_app/transfers/$batchId': typeof AppTransfersBatchIdRoute
   '/print/payslip/$payslipId': typeof PrintPayslipPayslipIdRoute
   '/_app/payroll/payslip/$payslipId': typeof AppPayrollPayslipPayslipIdRoute
+  '/_app/subscriptions_/receipt/$paymentId': typeof AppSubscriptionsReceiptPaymentIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/change-password'
+    | '/conditions'
     | '/confidentialite'
     | '/forgot-password'
     | '/login'
@@ -448,10 +468,12 @@ export interface FileRouteTypes {
     | '/transfers/$batchId'
     | '/print/payslip/$payslipId'
     | '/payroll/payslip/$payslipId'
+    | '/subscriptions/receipt/$paymentId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/change-password'
+    | '/conditions'
     | '/confidentialite'
     | '/forgot-password'
     | '/login'
@@ -492,11 +514,13 @@ export interface FileRouteTypes {
     | '/transfers/$batchId'
     | '/print/payslip/$payslipId'
     | '/payroll/payslip/$payslipId'
+    | '/subscriptions/receipt/$paymentId'
   id:
     | '__root__'
     | '/'
     | '/_app'
     | '/change-password'
+    | '/conditions'
     | '/confidentialite'
     | '/forgot-password'
     | '/login'
@@ -537,12 +561,14 @@ export interface FileRouteTypes {
     | '/_app/transfers/$batchId'
     | '/print/payslip/$payslipId'
     | '/_app/payroll/payslip/$payslipId'
+    | '/_app/subscriptions_/receipt/$paymentId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
   ChangePasswordRoute: typeof ChangePasswordRoute
+  ConditionsRoute: typeof ConditionsRoute
   ConfidentialiteRoute: typeof ConfidentialiteRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
@@ -611,6 +637,13 @@ declare module '@tanstack/react-router' {
       path: '/confidentialite'
       fullPath: '/confidentialite'
       preLoaderRoute: typeof ConfidentialiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/conditions': {
+      id: '/conditions'
+      path: '/conditions'
+      fullPath: '/conditions'
+      preLoaderRoute: typeof ConditionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/change-password': {
@@ -851,6 +884,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCompaniesCompanyIdRouteImport
       parentRoute: typeof AppCompaniesRoute
     }
+    '/_app/subscriptions_/receipt/$paymentId': {
+      id: '/_app/subscriptions_/receipt/$paymentId'
+      path: '/subscriptions/receipt/$paymentId'
+      fullPath: '/subscriptions/receipt/$paymentId'
+      preLoaderRoute: typeof AppSubscriptionsReceiptPaymentIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/payroll/payslip/$payslipId': {
       id: '/_app/payroll/payslip/$payslipId'
       path: '/payslip/$payslipId'
@@ -949,6 +989,7 @@ interface AppRouteChildren {
   AppTasksRoute: typeof AppTasksRoute
   AppTrainingRoute: typeof AppTrainingRoute
   AppTransfersRoute: typeof AppTransfersRouteWithChildren
+  AppSubscriptionsReceiptPaymentIdRoute: typeof AppSubscriptionsReceiptPaymentIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -975,6 +1016,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTasksRoute: AppTasksRoute,
   AppTrainingRoute: AppTrainingRoute,
   AppTransfersRoute: AppTransfersRouteWithChildren,
+  AppSubscriptionsReceiptPaymentIdRoute: AppSubscriptionsReceiptPaymentIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -983,6 +1025,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
   ChangePasswordRoute: ChangePasswordRoute,
+  ConditionsRoute: ConditionsRoute,
   ConfidentialiteRoute: ConfidentialiteRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,

@@ -12,6 +12,9 @@ import {
   companyApprovalLabel,
   companySubscriptionLabel,
 } from "@/modules/companies/types";
+import { listSubscriptionPlans } from "@/modules/companies/payment.functions";
+import { type PlanPricing, withPlanPricing } from "@/modules/companies/plans";
+import { PaymentHistory } from "@/modules/companies/components/PaymentHistory";
 import { SubscriptionPaymentInstructions } from "@/modules/companies/components/MvolaPaymentInstructions";
 import {
   PAYMENT_METHODS,
@@ -26,7 +29,7 @@ export const Route = createFileRoute("/_app/subscriptions")({
 
 const appRouteApi = getRouteApi("/_app");
 
-const plans = [
+const basePlans = [
   {
     id: "starter" as const,
     name: "Starter",
@@ -86,6 +89,17 @@ function SubscriptionsPage() {
       ? "poketra"
       : "mvola",
   );
+  const [pricing, setPricing] = useState<PlanPricing[]>([]);
+  useEffect(() => {
+    listSubscriptionPlans().then(setPricing).catch(() => setPricing([]));
+  }, []);
+  const plans = withPlanPricing(basePlans, pricing);
+  const proPrice = Number(pricing.find((p) => p.code === "pro")?.price_per_employee ?? 4500);
+  const [seatsInput, setSeatsInput] = useState("");
+  const [paymentDue, setPaymentDue] = useState({
+    seats: auth.company?.payment_seats ?? null,
+    amount: auth.company?.payment_amount ?? null,
+  });
   const [paymentCode, setPaymentCode] = useState<string | null>(
     auth.company?.payment_reference ?? null,
   );
@@ -119,7 +133,7 @@ function SubscriptionsPage() {
     })();
   }, [admin, companyId]);
 
-  const estimate = headcount != null ? headcount * 4500 : null;
+  const estimate = headcount != null ? headcount * proPrice : null;
   const currentPlan = auth.company?.subscription_plan;
 
   const handleChoosePlan = async (plan: "starter" | "pro" | "enterprise") => {
@@ -132,7 +146,7 @@ function SubscriptionsPage() {
     setSuccess(null);
     try {
       const result = await markSubscriptionPaid({
-        data: { companyId, plan, paymentMethod },
+        data: { companyId, plan, paymentMethod, seats: Number(seatsInput) || undefined },
       });
       if (!result.ok) {
         setError(result.message);
@@ -140,6 +154,7 @@ function SubscriptionsPage() {
       }
       const code = result.data.payment_reference;
       setPaymentCode(code);
+      setPaymentDue({ seats: result.data.payment_seats, amount: result.data.payment_amount });
       setSelectedPlan(result.data.subscription_plan);
       setSavedMethod(result.data.payment_method ?? paymentMethod);
       setSuccess(
@@ -293,6 +308,20 @@ function SubscriptionsPage() {
                 );
               })}
             </div>
+            <label className="mt-4 block max-w-xs text-sm">
+              <span className="font-medium">Nombre d’employés à couvrir</span>
+              <input
+                type="number"
+                min={Math.max(headcount ?? 0, 1)}
+                value={seatsInput}
+                placeholder={String(Math.max(headcount ?? 0, 1))}
+                onChange={(e) => setSeatsInput(e.target.value)}
+                className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3"
+              />
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Le montant se calcule sur ce nombre, jamais sur moins que vos employés actifs ({headcount ?? 0}).
+              </span>
+            </label>
           </SectionCard>
         </div>
       )}
@@ -303,6 +332,8 @@ function SubscriptionsPage() {
             paymentReference={paymentCode ?? auth.company!.payment_reference!}
             paymentMethod={paymentMethod}
             planLabel={selectedPlan ?? currentPlan}
+            seats={paymentDue.seats}
+            amount={paymentDue.amount}
           />
         </div>
       )}
@@ -418,6 +449,7 @@ function SubscriptionsPage() {
           )}
         </SectionCard>
       </div>
+      {companyId && !admin ? <PaymentHistory companyId={companyId} /> : null}
     </>
   );
 }

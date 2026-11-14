@@ -20,6 +20,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export const Route = createFileRoute("/signup")({
+  head: () => ({ meta: [{ title: "Créer un compte — Mshahara" }, { name: "description", content: "Créez le compte de votre entreprise sur Mshahara." }] }),
   beforeLoad: async () => {
     const session = await getAuthSession();
     if (session) {
@@ -140,6 +141,12 @@ function SignupPage() {
               {form.formState.isSubmitting ? "Création…" : "Créer mon compte"}
             </Button>
           </form>
+
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            En créant un compte, vous acceptez les{" "}
+            <Link to="/conditions" className="underline">conditions d’utilisation</Link> et la{" "}
+            <Link to="/confidentialite" className="underline">politique de confidentialité</Link>.
+          </p>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Déjà inscrit ?{" "}

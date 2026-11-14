@@ -63,6 +63,8 @@ export type Company = {
   /** Unique code to put in the M'Vola transfer description */
   payment_reference: string | null;
   payment_method: string | null;
+  payment_seats: number | null;
+  payment_amount: number | null;
   approved_at: string | null;
   approved_by: string | null;
   rejection_reason: string | null;
