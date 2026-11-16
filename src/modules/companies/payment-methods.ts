@@ -37,7 +37,7 @@ export const POKETRA_PAYMENT: PaymentMethodInfo = {
   id: "poketra",
   methodLabel: "Poketra EXIM BANK",
   accountName: "Mohamed Irsoid abdou el-Anzize",
-  accountNumber: "4359872",
+  accountNumber: "3899872",
   accountNameLabel: "Nom du compte Poketra",
   accountNumberLabel: "Numéro compte Poketra",
   openAppHint: "Ouvrez Poketra (EXIM BANK) et initiez un transfert.",
